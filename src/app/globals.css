@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Carnivore Lagos — design tokens
+
+   Two visual systems live in one Tailwind build. The STOREFRONT is the
+   default: a warm, near-black steakhouse palette, committed dark (it does
+   not follow prefers-color-scheme — the brand is dark on purpose). The
+   ADMIN dashboard re-declares the same semantic tokens to a light,
+   restrained palette under a `.admin` scope class set on <body> by the
+   /admin layout. Every component uses the semantic names (bg / surface /
+   text / accent / line …) and therefore renders correctly in both.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Fonts — actual families come from next/font vars set on <html>. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+
+  /* Radius scale — storefront values. Admin overrides below. One scale
+     per surface (Shape Consistency). */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+
+  /* Semantic colour tokens — STOREFRONT (default). */
+  --color-bg: #15100d;
+  --color-surface: #1f1712;
+  --color-raised: #2a1f18;
+  --color-text: #f3e9de;
+  --color-muted: #b7a594;
+  /* Lifted from #82705f so 12px meta/helper text clears WCAG AA on the
+     near-black ground. */
+  --color-subtle: #9d8a79;
+  --color-line: #3a2c22;
+  --color-line-strong: #55412f;
+
+  --color-accent: #d6491f;
+  --color-accent-hover: #b93d19;
+  --color-on-accent: #fbede6;
+  --color-gold: #d3a24c;
+
+  --color-success: #4c9a6a;
+  --color-warning: #dda53a;
+  --color-danger: #db4a3d;
+  --color-focus: #d3a24c;
+
+  /* Tinted, background-hued shadow (never pure black on the dark ground). */
+  --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --shadow-pop: 0 12px 40px -12px rgb(0 0 0 / 0.7);
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ADMIN scope — light, dense, functional. Same token names, new values. */
+.admin {
+  color-scheme: light;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  --color-bg: #f7f5f2;
+  --color-surface: #ffffff;
+  --color-raised: #ffffff;
+  --color-text: #1c1815;
+  --color-muted: #6b625a;
+  --color-subtle: #7d746a;
+  --color-line: #e4ded6;
+  --color-line-strong: #d3cabd;
+  /* was #948b81 — darkened for AA on the light admin ground */
+
+  --color-accent: #b93d19;
+  --color-accent-hover: #9c3315;
+  --color-on-accent: #ffffff;
+  --color-gold: #b93d19;
+
+  --color-success: #2e7d4f;
+  --color-warning: #a96b12;
+  --color-danger: #c0392b;
+  --color-focus: #b93d19;
+
+  --shadow-raise: 0 1px 2px rgb(28 24 21 / 0.06), 0 2px 8px -2px rgb(28 24 21 / 0.08);
+  --shadow-pop: 0 16px 48px -16px rgb(28 24 21 / 0.22);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv05";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 460;
+    letter-spacing: -0.01em;
+  }
+
+  /* Tabular figures for anything price/quantity/reference shaped. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 32%, transparent);
+    color: var(--color-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  /* Native form controls inherit the surface. */
+  input, select, textarea, button {
+    font: inherit;
+    color: inherit;
+  }
+
+  ::placeholder {
+    color: var(--color-subtle);
+    opacity: 1;
+  }
+
+  /* Leaflet renders a light map; keep its controls legible on both shells. */
+  .leaflet-container {
+    background: var(--color-raised);
+    font: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  /* Page gutter — consistent horizontal rhythm, thumb-safe on phones. */
+  .gutter {
+    padding-inline: clamp(1rem, 5vw, 2.5rem);
+  }
+
+  .shell {
+    width: 100%;
+    max-width: 78rem;
+    margin-inline: auto;
+  }
+
+  /* Fade+rise used for route-level content and scroll reveals. */
+  @keyframes rise {
+    from { opacity: 0; transform: translate3d(0, 12px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+  .animate-rise {
+    animation: rise 0.5s var(--ease-out-quint) both;
+  }
+
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--color-muted) 12%, transparent);
+    border-radius: var(--radius-md);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-muted) 10%, transparent),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after { animation: none; }
+  }
+}

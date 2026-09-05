@@ -1,0 +1,393 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // No `url` here on purpose — Prisma 7 reads the CLI's connection string
+  // from prisma.config.ts (DIRECT_URL). The running app never uses this
+  // datasource block at all; it builds its own connection via the Neon
+  // adapter over the pooled DATABASE_URL (see src/lib/prisma.ts).
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CONFIRMED
+  PREPARING
+  READY
+  // Delivery-only leg between READY and DELIVERED. Pickup orders never
+  // enter these two and go READY -> COMPLETED instead.
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+// One value per customer-facing order transition we notify on. Kept
+// separate from OrderStatus because it also covers "order placed" and
+// because notification copy is keyed off it.
+enum NotificationType {
+  PAYMENT_CONFIRMED
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_OUT_FOR_DELIVERY
+  ORDER_DELIVERED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+}
+
+enum FulfillmentType {
+  PICKUP
+  DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentIssueType {
+  // Paystack reported success but the amount/currency didn't match the
+  // order total — never auto-resolved, left for a human.
+  AMOUNT_MISMATCH
+  // A signature-valid charge.success webhook arrived for a reference with
+  // no (or a superseded) Payment row — a possible charge with no order to
+  // attach it to.
+  ORPHAN_CHARGE
+  // A Payment sat PENDING far past the point a real attempt would have
+  // resolved, even after the reconciler re-checked it against Paystack.
+  STUCK_PENDING
+  // The Payment reached SUCCESS but its Order never advanced past
+  // PENDING_PAYMENT (e.g. a crash between the two writes, or the order was
+  // cancelled in the same instant) — money in, order not fulfilled.
+  PAID_ORDER_NOT_ADVANCED
+}
+
+enum PaymentIssueStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+model AdminUser {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  role             AdminRole @default(ADMIN)
+  isActive         Boolean   @default(true)
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([email])
+}
+
+// Singleton row — application code always reads/writes id = "default".
+model RestaurantSettings {
+  id                    String   @id @default("default")
+  restaurantName        String
+  originLat             Decimal? @db.Decimal(9, 6)
+  originLng             Decimal? @db.Decimal(9, 6)
+  deliveryRatePerKmKobo Int      @default(0)
+  minDeliveryFeeKobo    Int      @default(0)
+  maxDeliveryDistanceKm Decimal? @db.Decimal(6, 2)
+  pickupEnabled         Boolean  @default(true)
+  deliveryEnabled       Boolean  @default(true)
+  // When true, a paid order is moved straight to CONFIRMED automatically
+  // (removing a manual click per order). Turn off to screen orders
+  // during a rush before committing the kitchen.
+  autoConfirmPaidOrders Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Catalogue
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@index([isActive])
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  name          String
+  description   String?
+  priceKobo     Int
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  imageUrl      String?
+  imagePublicId String?
+  isActive      Boolean     @default(true)
+  isAvailable   Boolean     @default(true)
+  // Free-form attribute tags used by the smart search / concierge
+  // ("spicy", "meaty", "seafood", "shareable", "light", ...). Admin-set;
+  // the concierge is constrained to these + real products, never invents.
+  tags          String[]    @default([])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+
+  @@index([categoryId])
+  @@index([isActive, isAvailable])
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
+// A customer account, identified by phone number. Created the moment a
+// PhoneOtp verification succeeds — never before, so an abandoned OTP
+// request never leaves a junk account behind. `email`/`emailVerifiedAt`
+// are filled in afterward, in the same signup flow but as a separate
+// step (see EmailVerificationCode) — a session is fully usable for
+// browsing and building a cart on phone verification alone; only
+// POST /api/payments/initialize requires emailVerifiedAt to be set.
+model Customer {
+  id              String    @id @default(uuid())
+  phone           String    @unique
+  name            String?
+  email           String?
+  emailVerifiedAt DateTime?
+  // When true, order-status SMS/email are suppressed for this customer.
+  // In-app notifications and web push are unaffected.
+  orderUpdatesOptOut Boolean @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  orders                  Order[]
+  emailVerificationCodes  EmailVerificationCode[]
+  notifications           Notification[]
+  pushSubscriptions       PushSubscription[]
+
+  @@index([phone])
+}
+
+// Verifies a phone number before any Customer row exists — request and
+// verify are both keyed by the raw phone string, since a first-time
+// signup has nothing else to key on yet. A successful verify is what
+// creates (or finds) the Customer row; the code itself is never stored
+// in plain text, only its hash (see src/lib/otp.ts).
+model PhoneOtp {
+  id         String    @id @default(uuid())
+  phone      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone])
+}
+
+// Verifies the email address on an already-signed-in Customer's profile.
+// Unlike PhoneOtp, a Customer row always exists by this point, so this is
+// keyed by customerId directly rather than by the raw email string.
+model EmailVerificationCode {
+  id         String    @id @default(uuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  id             String          @id @default(uuid())
+  orderNumber    String          @unique
+  idempotencyKey String          @unique
+  status         OrderStatus     @default(PENDING_PAYMENT)
+  fulfillmentType FulfillmentType
+
+  // Which account placed this order — nullable so every order placed
+  // before customer accounts existed keeps working, and onDelete:SetNull
+  // so deleting a Customer never touches order history (the snapshot
+  // fields below already make each order fully readable on its own).
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // Per-order contact snapshot — pre-filled from the Customer profile at
+  // checkout but stays editable per order (e.g. ordering for someone
+  // else, a different delivery contact), independent of the account's
+  // own verified identity.
+  customerName   String
+  customerPhone  String
+  customerEmail  String?
+
+  deliveryAddress    String?
+  deliveryLat        Decimal? @db.Decimal(9, 6)
+  deliveryLng        Decimal? @db.Decimal(9, 6)
+  deliveryDistanceKm Decimal? @db.Decimal(6, 2)
+  notes              String?
+
+  subtotalKobo    Int
+  deliveryFeeKobo Int @default(0)
+  totalKobo       Int
+
+  items         OrderItem[]
+  payment       Payment?
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Snapshot at time of purchase — never recomputed from Product.
+  productNameSnapshot String
+  unitPriceKobo       Int
+  quantity            Int
+  lineTotalKobo       Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// orderId stays unique — this row is "the current payment attempt for this
+// order", not a full attempt ledger. reference/status are mutable while
+// status is PENDING or FAILED (a retry after decline overwrites them); once
+// status = SUCCESS the row is treated as immutable.
+model Payment {
+  id              String        @id @default(uuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider        String        @default("paystack")
+  reference       String        @unique
+  status          PaymentStatus @default(PENDING)
+  amountKobo      Int
+  currency        String        @default("NGN")
+  paidAt          DateTime?
+  rawVerification Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([reference])
+  @@index([status])
+}
+
+// Payment anomalies that need a human to look at them — surfaced in the
+// admin dashboard (/admin/payments) instead of only living in a log line.
+// Written by applyPaystackOutcome (mismatch / orphan charge) and by the
+// reconciler (stuck pending / paid-but-not-advanced). One row per
+// (type, reference) so repeated webhook deliveries and repeated
+// reconciler passes update rather than duplicate.
+model PaymentIssue {
+  id           String             @id @default(uuid())
+  type         PaymentIssueType
+  status       PaymentIssueStatus @default(OPEN)
+  reference    String
+  orderId      String?
+  orderNumber  String?
+  expectedKobo Int?
+  observedKobo Int?
+  currency     String?
+  detail       String
+  context      Json?
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([type, reference])
+  @@index([status])
+  @@index([reference])
+  @@index([createdAt])
+}
+
+// Durable, customer-facing notification history — one row per order
+// transition (see src/lib/notifications.ts). Push / SMS / email are just
+// delivery mechanisms layered on top; this table is the source of truth
+// for the in-app notification centre. `@@unique([orderId, type])` makes a
+// repeated transition (retry, reconcile) a no-op instead of a duplicate.
+model Notification {
+  id          String           @id @default(uuid())
+  customerId  String
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderNumber String?
+  type        NotificationType
+  title       String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([orderId, type])
+  @@index([customerId, createdAt])
+  @@index([customerId, readAt])
+}
+
+// One Web Push subscription (endpoint + keys) per browser/device a
+// customer has opted in on. Pruned when the push service returns 404/410
+// (see src/lib/webPush.ts + the reconcile cron).
+model PushSubscription {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([customerId])
+}
+
+// DB-backed fixed-window counter — the rate-limiting mechanism for public
+// routes and admin-login IP throttling. No Redis: each check opportunistically
+// deletes its own stale rows before upserting, so nothing needs a cron job.
+model RateLimit {
+  id          String   @id @default(uuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+
+  @@unique([key, windowStart])
+  @@index([key])
+}

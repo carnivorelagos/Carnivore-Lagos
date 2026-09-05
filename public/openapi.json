@@ -1,0 +1,4099 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Restaurant Ordering Platform API",
+    "version": "1.0.0",
+    "description": "Every response is `{ success: true, data }` or `{ success: false, error: { code, message } }`. All money fields are integer kobo. Admin routes require the admin_session cookie (log in via POST /api/admin/auth/login below, then Swagger UI will carry the cookie automatically on same-origin requests). State-changing admin requests also require a matching Origin header, which the browser sets automatically when this page is served from the same app. Checkout is accounts-only: customer routes require the customer_session cookie (obtained via POST /api/auth/otp/request then POST /api/auth/otp/verify below), separate from admin_session and carried the same way by Swagger UI on same-origin requests."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same origin as this docs page"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Public"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "Customer Accounts"
+    },
+    {
+      "name": "Admin — Auth"
+    },
+    {
+      "name": "Admin — Orders"
+    },
+    {
+      "name": "Admin — Products"
+    },
+    {
+      "name": "Admin — Categories"
+    },
+    {
+      "name": "Admin — Settings"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "adminSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "admin_session"
+      },
+      "customerSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "customer_session"
+      },
+      "reconcileSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "RECONCILE_SECRET, for the internal reconcile cron only."
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "error"
+        ]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CategoryListEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "CategoryEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/Category"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ProductEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/Product"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "ProductPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "ProductPageEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/ProductPage"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PublicSettings": {
+        "type": "object",
+        "properties": {
+          "pickupEnabled": {
+            "type": "boolean"
+          },
+          "deliveryEnabled": {
+            "type": "boolean"
+          },
+          "maxDeliveryDistanceKm": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "PublicSettingsEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicSettings"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "RestaurantSettings": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "restaurantName": {
+            "type": "string"
+          },
+          "originLat": {
+            "type": "number",
+            "nullable": true
+          },
+          "originLng": {
+            "type": "number",
+            "nullable": true
+          },
+          "deliveryRatePerKmKobo": {
+            "type": "integer",
+            "description": "Per-km delivery rate, in kobo."
+          },
+          "minDeliveryFeeKobo": {
+            "type": "integer",
+            "description": "Floor applied to the computed delivery fee."
+          },
+          "maxDeliveryDistanceKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "pickupEnabled": {
+            "type": "boolean"
+          },
+          "deliveryEnabled": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SettingsEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/RestaurantSettings"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "LatLng": {
+        "type": "object",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lng": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "required": [
+          "productId",
+          "quantity"
+        ],
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          }
+        }
+      },
+      "CheckoutBase": {
+        "type": "object",
+        "required": [
+          "fulfillmentType",
+          "items",
+          "customerName",
+          "customerPhone"
+        ],
+        "properties": {
+          "fulfillmentType": {
+            "type": "string",
+            "enum": [
+              "PICKUP",
+              "DELIVERY"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItem"
+            },
+            "minItems": 1,
+            "maxItems": 30
+          },
+          "customerName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "customerPhone": {
+            "type": "string",
+            "example": "08012345678",
+            "description": "Nigerian format: +234XXXXXXXXXX or 0XXXXXXXXXX."
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email",
+            "description": "Required before /api/payments/initialize can be called."
+          },
+          "deliveryAddress": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "deliveryPin": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LatLng"
+              }
+            ],
+            "description": "Required when fulfillmentType is DELIVERY."
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "CheckoutQuoteRequest": {
+        "$ref": "#/components/schemas/CheckoutBase"
+      },
+      "CreateOrderRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CheckoutBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "idempotencyKey"
+            ],
+            "properties": {
+              "idempotencyKey": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Client-generated once per checkout attempt; resend the same value on retry."
+              }
+            }
+          }
+        ]
+      },
+      "CheckoutQuoteResult": {
+        "type": "object",
+        "properties": {
+          "subtotalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "deliveryFeeKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "totalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "deliveryDistanceKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productName": {
+                  "type": "string"
+                },
+                "unitPriceKobo": {
+                  "type": "integer",
+                  "description": "Integer kobo (₦1 = 100 kobo)."
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "lineTotalKobo": {
+                  "type": "integer",
+                  "description": "Integer kobo (₦1 = 100 kobo)."
+                }
+              }
+            }
+          }
+        }
+      },
+      "CheckoutQuoteEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/CheckoutQuoteResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "productNameSnapshot": {
+            "type": "string"
+          },
+          "unitPriceKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "lineTotalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "example": "ORD-20260828-7K9M2P"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "fulfillmentType": {
+            "type": "string",
+            "enum": [
+              "PICKUP",
+              "DELIVERY"
+            ]
+          },
+          "subtotalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "deliveryFeeKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "totalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "deliveryDistanceKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            }
+          }
+        }
+      },
+      "OrderEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/Order"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_PAYMENT",
+          "PAID",
+          "CONFIRMED",
+          "PREPARING",
+          "READY",
+          "COMPLETED",
+          "CANCELLED"
+        ]
+      },
+      "OrderLookupResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "fulfillmentType": {
+            "type": "string",
+            "enum": [
+              "PICKUP",
+              "DELIVERY"
+            ]
+          },
+          "subtotalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "deliveryFeeKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "totalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            }
+          },
+          "payment": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "SUCCESS",
+                  "FAILED"
+                ]
+              },
+              "paidAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "OrderLookupEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/OrderLookupResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PaymentInitializeResult": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "accessCode": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentInitializeEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaymentInitializeResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PaymentVerifyResult": {
+        "type": "object",
+        "properties": {
+          "orderStatus": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "SUCCESS",
+              "FAILED"
+            ]
+          },
+          "amountMismatch": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaymentVerifyEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaymentVerifyResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminIdentity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "SUPER_ADMIN"
+            ]
+          }
+        }
+      },
+      "AdminIdentityEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/AdminIdentity"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminLoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminLogoutEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "loggedOut": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminOrderSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "fulfillmentType": {
+            "type": "string",
+            "enum": [
+              "PICKUP",
+              "DELIVERY"
+            ]
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "totalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payment": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "SUCCESS",
+                  "FAILED"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "AdminOrderPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminOrderPageEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/AdminOrderPage"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminOrderDetailEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Order"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "customerName": {
+                    "type": "string"
+                  },
+                  "customerPhone": {
+                    "type": "string"
+                  },
+                  "customerEmail": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "deliveryAddress": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "payment": {
+                    "type": "object",
+                    "nullable": true
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminOrderStatusUpdateRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          }
+        }
+      },
+      "AdminProductCreateRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "priceKobo",
+          "categoryId"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "priceKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo).",
+            "minimum": 1
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "imagePublicId": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "AdminProductUpdateRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminProductCreateRequest"
+          }
+        ],
+        "description": "All fields optional (partial update)."
+      },
+      "AdminProductPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminProductPageEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/AdminProductPage"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PaymentIssue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "AMOUNT_MISMATCH",
+              "ORPHAN_CHARGE",
+              "STUCK_PENDING",
+              "PAID_ORDER_NOT_ADVANCED"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED",
+              "IGNORED"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo).",
+            "nullable": true
+          },
+          "observedKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo).",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string"
+          },
+          "context": {
+            "nullable": true
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "resolvedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaymentIssueEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaymentIssue"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PaymentIssuePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentIssue"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "openCount": {
+            "type": "integer",
+            "description": "Total OPEN issues, regardless of the current filter/page."
+          }
+        }
+      },
+      "PaymentIssuePageEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaymentIssuePage"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminPaymentIssueUpdateRequest": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "RESOLVED",
+              "IGNORED"
+            ]
+          }
+        }
+      },
+      "ImageSignatureRequest": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "default": "products",
+            "maxLength": 100
+          }
+        }
+      },
+      "ImageSignatureResult": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "cloudName": {
+            "type": "string"
+          },
+          "folder": {
+            "type": "string"
+          }
+        }
+      },
+      "ImageSignatureEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/ImageSignatureResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "AdminCategoryCreateRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "default": 0
+          }
+        }
+      },
+      "AdminCategoryUpdateRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminCategoryCreateRequest"
+          }
+        ],
+        "description": "All fields optional (partial update)."
+      },
+      "AdminSettingsUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "restaurantName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "originLat": {
+            "type": "number",
+            "nullable": true
+          },
+          "originLng": {
+            "type": "number",
+            "nullable": true
+          },
+          "deliveryRatePerKmKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo).",
+            "minimum": 0
+          },
+          "minDeliveryFeeKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo).",
+            "minimum": 0
+          },
+          "maxDeliveryDistanceKm": {
+            "type": "number",
+            "nullable": true
+          },
+          "pickupEnabled": {
+            "type": "boolean"
+          },
+          "deliveryEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+2348012345678"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailVerifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Null until the email step of signup is completed."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CustomerEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/Customer"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PhoneOtpRequestRequest": {
+        "type": "object",
+        "required": [
+          "phone"
+        ],
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "08012345678",
+            "description": "Nigerian format: +234XXXXXXXXXX or 0XXXXXXXXXX."
+          }
+        }
+      },
+      "PhoneOtpRequestResult": {
+        "type": "object",
+        "properties": {
+          "sent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PhoneOtpRequestEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PhoneOtpRequestResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "PhoneOtpVerifyRequest": {
+        "type": "object",
+        "required": [
+          "phone",
+          "code"
+        ],
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "08012345678"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "042817"
+          }
+        }
+      },
+      "PhoneOtpVerifyResult": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "isNewAccount": {
+            "type": "boolean",
+            "description": "True the first time this phone number has ever verified — lets the client decide whether to prompt for the email step."
+          }
+        }
+      },
+      "PhoneOtpVerifyEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/PhoneOtpVerifyResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "CustomerLogoutEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "loggedOut": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "EmailVerificationRequestRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Optional — saved onto the profile alongside sending the code."
+          }
+        }
+      },
+      "EmailVerificationRequestResult": {
+        "type": "object",
+        "properties": {
+          "sent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EmailVerificationRequestEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/EmailVerificationRequestResult"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "EmailVerificationConfirmRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          }
+        }
+      },
+      "EmailVerificationConfirmEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "emailVerified": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "MyOrderSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OrderStatus"
+          },
+          "fulfillmentType": {
+            "type": "string",
+            "enum": [
+              "PICKUP",
+              "DELIVERY"
+            ]
+          },
+          "totalKobo": {
+            "type": "integer",
+            "description": "Integer kobo (₦1 = 100 kobo)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MyOrderPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyOrderSummary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "MyOrderPageEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "$ref": "#/components/schemas/MyOrderPage"
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      },
+      "MyOrderDetailEnvelope": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "data": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Order"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "payment": {
+                    "type": "object",
+                    "nullable": true
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "data"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "List active categories",
+        "responses": {
+          "200": {
+            "description": "Active categories, ordered by sortOrder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "List active + available products",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated product list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPageEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query params.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get a single active product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found or inactive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/public": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get public checkout config",
+        "description": "Never exposes origin coordinates or the raw per-km delivery rate.",
+        "responses": {
+          "200": {
+            "description": "Public settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSettingsEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/checkout/quote": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Preview a checkout total (creates nothing)",
+        "description": "Runs the exact same fulfillment/range/floor sequence as order creation. Not authoritative — POST /api/orders recomputes it again.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Computed quote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutQuoteEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, e.g. missing deliveryPin for a DELIVERY order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A product in the cart is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Delivery address is out of range, or the requested fulfillment type is disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Create an order",
+        "description": "Requires a signed-in customer (accounts-only checkout — browsing stays public, ordering doesn't). Rate-limited by IP (10/window). Idempotent on idempotencyKey — resending the same key returns the original order (200) instead of creating a duplicate (201 on first creation); reusing another customer's key is rejected, never returns their order.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Idempotency key already used — returns the existing order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Order created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error, or a reused idempotency key that belongs to a different customer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A product in the cart is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Delivery out of range or fulfillment type disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{orderNumber}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Look up an order (customer-facing)",
+        "description": "Requires the Payment reference as a second factor — orderNumber alone is not enough to view someone else's order.",
+        "parameters": [
+          {
+            "name": "orderNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-20260828-7K9M2P"
+          },
+          {
+            "name": "ref",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The Payment reference issued at /api/payments/initialize."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderLookupEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No matching order, or ref doesn't match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payments/initialize": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Arm (or re-arm) a Paystack transaction for an order",
+        "description": "Requires the order to belong to the signed-in customer, and their account email to be verified — the account's own verified email is sent to Paystack, never the order's editable customerEmail snapshot. Rate-limited per order and per IP.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reference + access code for the Paystack popup.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentInitializeEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account email is not verified yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found, or doesn't belong to this customer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Order already paid, or not in a payable state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Paystack unreachable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payments/verify": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Server-authoritative payment verification",
+        "description": "Called by the frontend after the Paystack popup's onSuccess callback. Never trusts that callback alone — this is what actually decides anything. Shares logic with the webhook so both can never disagree.",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentVerifyEnvelope"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Paystack reports the payment failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown reference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/paystack/webhook": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Paystack webhook receiver",
+        "description": "Signature-verified via the x-paystack-signature header (HMAC-SHA512 of the raw body). Not callable meaningfully from Swagger UI — Paystack signs the exact raw bytes it sends, so a hand-built request here will always fail signature verification. Included for completeness.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Acknowledged (event processed, ignored, or a safe no-op on an unknown reference)."
+          },
+          "401": {
+            "description": "Invalid or missing signature."
+          },
+          "500": {
+            "description": "Processing failed — Paystack will retry."
+          }
+        }
+      }
+    },
+    "/api/admin/auth/login": {
+      "post": {
+        "tags": [
+          "Admin — Auth"
+        ],
+        "summary": "Admin login",
+        "description": "Sets the admin_session cookie on success. Rate-limited by IP (10/window) and by per-account lockout (5 failed attempts locks the account 15 minutes).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminIdentityEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Account locked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/auth/logout": {
+      "post": {
+        "tags": [
+          "Admin — Auth"
+        ],
+        "summary": "Admin logout",
+        "description": "Clears the session cookie.",
+        "responses": {
+          "200": {
+            "description": "Logged out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLogoutEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/auth/me": {
+      "get": {
+        "tags": [
+          "Admin — Auth"
+        ],
+        "summary": "Current admin identity",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminIdentityEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders": {
+      "get": {
+        "tags": [
+          "Admin — Orders"
+        ],
+        "summary": "List orders",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrderStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated order list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderPageEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/{id}": {
+      "get": {
+        "tags": [
+          "Admin — Orders"
+        ],
+        "summary": "Full order detail",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full order — items, payment, customer info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin — Orders"
+        ],
+        "summary": "Change order status",
+        "description": "Validated against an explicit transition allow-list. Conflict-safe: if the order changed since you read it, this returns 409 CONFLICT rather than clobbering a concurrent edit.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminOrderStatusUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Invalid transition, or a concurrent edit won the race.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/products": {
+      "get": {
+        "tags": [
+          "Admin — Products"
+        ],
+        "summary": "List all products (including inactive)",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated product list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProductPageEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin — Products"
+        ],
+        "summary": "Create a product",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminProductCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/products/{id}": {
+      "patch": {
+        "tags": [
+          "Admin — Products"
+        ],
+        "summary": "Update a product (partial)",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminProductUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin — Products"
+        ],
+        "summary": "Soft-delete a product",
+        "description": "Never a hard delete — sets isActive=false and isAvailable=false. Historical orders keep their snapshot regardless.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deactivated product.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/products/{id}/image-signature": {
+      "post": {
+        "tags": [
+          "Admin — Products"
+        ],
+        "summary": "Get a signed Cloudinary upload signature",
+        "description": "The server never proxies image bytes — the admin UI uploads directly to Cloudinary using this short-lived signature.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageSignatureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signature payload for the Cloudinary direct upload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSignatureEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/categories": {
+      "get": {
+        "tags": [
+          "Admin — Categories"
+        ],
+        "summary": "List all categories (including inactive)",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All categories, ordered by sortOrder.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin — Categories"
+        ],
+        "summary": "Create a category",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCategoryCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/categories/{id}": {
+      "patch": {
+        "tags": [
+          "Admin — Categories"
+        ],
+        "summary": "Update a category (partial)",
+        "description": "No DELETE route — a category referencing products can't be removed (Restrict FK). Deactivate via isActive:false instead.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCategoryUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": [
+          "Admin — Settings"
+        ],
+        "summary": "Get restaurant settings",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full settings row.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin — Settings"
+        ],
+        "summary": "Update restaurant settings",
+        "description": "Where deliveryRatePerKmKobo and minDeliveryFeeKobo get set once confirmed with the client — both default to 0. Invalidates the cached storefront copy of settings.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSettingsUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/payments": {
+      "get": {
+        "tags": [
+          "Admin — Payments"
+        ],
+        "summary": "List payment anomalies",
+        "description": "PaymentIssue rows — amount mismatches, orphan charges, stuck-pending payments, paid-but-not-advanced orders. Defaults to OPEN; `?status=` widens it. `openCount` is always the total open count.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "RESOLVED",
+                "IGNORED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated payment-issue list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentIssuePageEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/payments/{id}": {
+      "patch": {
+        "tags": [
+          "Admin — Payments"
+        ],
+        "summary": "Close a payment issue",
+        "description": "Mark an issue RESOLVED or IGNORED once a human has dealt with it. One-way — the system re-opens the row itself if the same anomaly recurs.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPaymentIssueUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated issue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentIssueEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Issue not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/orders/bulk-status": {
+      "patch": {
+        "tags": [
+          "Admin — Orders"
+        ],
+        "summary": "Advance many orders at once",
+        "description": "{ orderIds: string[1..30], target?: OrderStatus }. No target = advance each order one step (fulfilment-aware). Per-order results; illegal or conflicting rows are skipped, not fatal. Fires the customer notification for each order that moved.",
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderIds"
+                ],
+                "properties": {
+                  "orderIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  },
+                  "target": {
+                    "$ref": "#/components/schemas/OrderStatus"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-order results.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/menu/index": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Full menu for client-side smart search",
+        "description": "Every active + available product (id, name, description, price, image, categoryId, tags) in one payload. Cached + CDN-cacheable.",
+        "responses": {
+          "200": {
+            "description": "Menu index.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search/assist": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "AI concierge (search Layer 4)",
+        "description": "{ query }. Called only after deterministic search fails. Returns { available:false } if ANTHROPIC_API_KEY is unset. Rate-limited per IP; identical normalised queries cached ~1h (busted on menu edits). Every returned product id is re-validated against the DB; names/prices/images come from the DB row.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Concierge result or { available:false }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/notifications": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "In-app notifications",
+        "description": "Paginated, newest first. Always returns unreadCount. ?unread=1 for unread only.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          },
+          {
+            "name": "unread",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification page + unreadCount.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Mark all notifications read",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ marked }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/notifications/{id}": {
+      "patch": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Mark one notification read",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ read: true }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/push/subscribe": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Register a Web Push subscription",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscription"
+                ],
+                "properties": {
+                  "subscription": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ saved: true }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Remove a Web Push subscription",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "endpoint"
+                ],
+                "properties": {
+                  "endpoint": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ removed: true }.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/reconcile-payments": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Run the payment reconciler + table sweep",
+        "description": "Not part of the public/customer/admin surface. Authenticated by `Authorization: Bearer $RECONCILE_SECRET`. Re-verifies stale PENDING payments against Paystack and applies missed outcomes, heals paid-but-unadvanced orders, escalates the genuinely-stuck to PaymentIssue rows, and sweeps expired RateLimit/OTP rows. Called every ~10 min by a Netlify scheduled function; safe to invoke by hand. GET behaves identically.",
+        "security": [
+          {
+            "reconcileSecret": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run summary (counts).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/request": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Request an OTP (signup or login, same endpoint)",
+        "description": "One screen for both cases — never reveals whether the phone number is already registered; a code is texted either way. Rate-limited by phone (5/window) and by IP (15/window): unlike most limits in this app, abuse here has a direct SMS cost.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneOtpRequestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneOtpRequestEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/verify": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Verify the OTP, sign in (creating the account on first use)",
+        "description": "Sets the customer_session cookie on success. A Customer row is created here, on first successful verification for a phone number — never on request alone, so an abandoned OTP request never leaves a junk account behind.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneOtpVerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneOtpVerifyEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Incorrect or expired code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/customer/logout": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Customer logout",
+        "description": "Clears the customer_session cookie.",
+        "responses": {
+          "200": {
+            "description": "Logged out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLogoutEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/email/request": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Request an email verification code",
+        "description": "Second step of signup — a Customer must already be signed in (phone-verified). Saves the email onto the profile immediately, unverified, and sends a 6-digit code to it.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationRequestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailVerificationRequestEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/email/confirm": {
+      "post": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Confirm the email verification code",
+        "description": "Sets Customer.emailVerifiedAt — the one thing POST /api/payments/initialize actually requires. Browsing and building a cart never depended on this; only paying does.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailVerificationConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailVerificationConfirmEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Incorrect or expired code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Current customer profile",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "Update profile preferences",
+        "description": "{ orderUpdatesOptOut? } — opt in/out of SMS + email order updates. In-app + push unaffected.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderUpdatesOptOut": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/orders": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "This customer's order history",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "description": "Server-capped at 50 regardless of what's requested."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated order history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyOrderPageEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/orders/{orderNumber}": {
+      "get": {
+        "tags": [
+          "Customer Accounts"
+        ],
+        "summary": "One of this customer's orders, in full",
+        "description": "Same not-found response whether the order doesn't exist or simply isn't this customer's — never confirms another customer's order number is valid.",
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "orderNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "ORD-20260828-7K9M2P"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full order detail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyOrderDetailEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found, or not this customer's.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

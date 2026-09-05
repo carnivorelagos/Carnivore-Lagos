@@ -1,0 +1,75 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ShoppingBag, UserCircle } from "@phosphor-icons/react";
+import { cn } from "@/lib/client/cn";
+import { useCart } from "@/components/providers/CartProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useCartSheet } from "@/components/store/CartSheet";
+import { NotificationBell } from "@/components/store/NotificationBell";
+import { Wordmark } from "@/components/store/Wordmark";
+
+export function StoreHeader() {
+  const pathname = usePathname();
+  const { count, hydrated } = useCart();
+  const { customer } = useAuth();
+  const cartSheet = useCartSheet();
+
+  const navLink = (href: string, label: string) => {
+    const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+    return (
+      <Link
+        href={href}
+        className={cn(
+          "text-sm transition-colors",
+          active
+            ? "text-[var(--color-text)]"
+            : "text-[var(--color-muted)] hover:text-[var(--color-text)]",
+        )}
+      >
+        {label}
+      </Link>
+    );
+  };
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_86%,transparent)] backdrop-blur-md">
+      <div className="shell gutter flex h-14 items-center justify-between gap-4 sm:h-16">
+        <div className="flex items-center gap-7">
+          <Wordmark size="md" />
+          <nav className="hidden items-center gap-6 sm:flex">
+            {navLink("/menu", "Menu")}
+            {navLink("/account/orders", "Orders")}
+          </nav>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <NotificationBell />
+
+          <Link
+            href={customer ? "/account" : "/login"}
+            aria-label={customer ? "Your account" : "Sign in"}
+            className="hidden size-10 items-center justify-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)] hover:text-[var(--color-text)] sm:inline-flex"
+          >
+            <UserCircle className="size-[22px]" />
+          </Link>
+
+          <button
+            type="button"
+            onClick={cartSheet.open}
+            aria-label={`Open cart${count > 0 ? `, ${count} items` : ""}`}
+            className="relative inline-flex h-10 items-center gap-2 rounded-md px-2.5 text-[var(--color-text)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)]"
+          >
+            <ShoppingBag className="size-[22px]" />
+            {hydrated && count > 0 ? (
+              <span className="tnum grid min-w-5 place-items-center rounded-full bg-[var(--color-accent)] px-1 text-[11px] font-semibold text-[var(--color-on-accent)]">
+                {count > 99 ? "99+" : count}
+              </span>
+            ) : null}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}

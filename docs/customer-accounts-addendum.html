@@ -1,0 +1,573 @@
+<title>Customer Accounts & Scale</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@450;550;650&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper: #f2f3ef;
+    --paper-raised: #ffffff;
+    --ink: #171a16;
+    --ink-soft: #4b5147;
+    --ink-faint: #7a8172;
+    --rule: #d7dacf;
+    --rule-strong: #b9bdad;
+    --accent: #b5541f;
+    --accent-ink: #ffffff;
+    --accent-wash: #f3e3d6;
+    --good: #4c6b46;
+    --good-wash: #e3ecdd;
+    --warn: #a3671a;
+    --warn-wash: #f4e6d0;
+    --new: #9a3f2e;
+    --new-wash: #f4ddd5;
+    --neutral-tag: #4b5568;
+    --neutral-wash: #e4e7ec;
+    --code-bg: #e9ebe3;
+    --shadow: 0 1px 2px rgba(23,26,22,0.06), 0 8px 24px rgba(23,26,22,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15170f;
+      --paper-raised: #1c1f16;
+      --ink: #eeefe6;
+      --ink-soft: #b8bcac;
+      --ink-faint: #838a76;
+      --rule: #33372a;
+      --rule-strong: #454a37;
+      --accent: #e08a4f;
+      --accent-ink: #1a1206;
+      --accent-wash: #3a2617;
+      --good: #8fb885;
+      --good-wash: #22301f;
+      --warn: #d9a552;
+      --warn-wash: #362c15;
+      --new: #e08876;
+      --new-wash: #3a231d;
+      --neutral-tag: #a7b0c4;
+      --neutral-wash: #232838;
+      --code-bg: #20231a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15170f;
+    --paper-raised: #1c1f16;
+    --ink: #eeefe6;
+    --ink-soft: #b8bcac;
+    --ink-faint: #838a76;
+    --rule: #33372a;
+    --rule-strong: #454a37;
+    --accent: #e08a4f;
+    --accent-ink: #1a1206;
+    --accent-wash: #3a2617;
+    --good: #8fb885;
+    --good-wash: #22301f;
+    --warn: #d9a552;
+    --warn-wash: #362c15;
+    --new: #e08876;
+    --new-wash: #3a231d;
+    --neutral-tag: #a7b0c4;
+    --neutral-wash: #232838;
+    --code-bg: #20231a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-wash); color: var(--ink); }
+
+  h1, h2, h3, .eyebrow, .step-num, .tag, nav, .mono {
+    font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  code, .field, .route, .code-face {
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 4vw, 3rem);
+  }
+
+  /* ---- Header ---- */
+  header.hero {
+    border-bottom: 1px solid var(--rule);
+    padding: clamp(2.5rem, 6vw, 4rem) 0 clamp(2rem, 5vw, 3rem);
+  }
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-size: clamp(2.1rem, 4.4vw, 3.1rem);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.08;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+    max-width: 18ch;
+  }
+  .dek {
+    font-size: 1.14rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .dek strong { color: var(--ink); font-weight: 500; }
+
+  /* ---- Layout: sticky nav + content ---- */
+  .layout {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: clamp(2rem, 4vw, 4rem);
+    padding: clamp(2rem, 5vw, 3.5rem) 0 5rem;
+    align-items: start;
+  }
+  nav.toc {
+    position: sticky;
+    top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    font-size: 0.82rem;
+  }
+  nav.toc a {
+    color: var(--ink-faint);
+    text-decoration: none;
+    padding: 0.15rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.7rem;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  nav.toc a:hover { color: var(--ink); border-left-color: var(--rule-strong); }
+  nav.toc .toc-label {
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-size: 0.72rem;
+    margin-bottom: 0.3rem;
+  }
+
+  main { min-width: 0; }
+  section { margin-bottom: clamp(3rem, 6vw, 4.5rem); scroll-margin-top: 2rem; }
+
+  h2 {
+    font-size: 1.55rem;
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    margin: 0 0 1.3rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+  h2 .h2-index {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 650;
+    margin: 0 0 0.6rem;
+    color: var(--ink);
+  }
+  p { max-width: 66ch; margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+  .lede { font-size: 1.03rem; color: var(--ink-soft); max-width: 66ch; }
+
+  /* ---- Adopted-decisions strip ---- */
+  .adopted {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow);
+  }
+  .adopted ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.65rem; }
+  .adopted li { display: flex; gap: 0.7rem; align-items: baseline; max-width: 60ch; }
+  .adopted li::before {
+    content: "✓";
+    font-family: "Instrument Sans", sans-serif;
+    font-weight: 650;
+    color: var(--good);
+    flex-shrink: 0;
+  }
+
+  /* ---- Flow steps ---- */
+  .flow {
+    display: grid;
+    gap: 0;
+    border-left: 2px solid var(--rule);
+    margin-left: 0.55rem;
+  }
+  .step {
+    position: relative;
+    padding: 0 0 1.6rem 1.9rem;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step-num {
+    position: absolute;
+    left: -0.68rem;
+    top: 0.1rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--rule-strong);
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+    font-weight: 650;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-title {
+    font-family: "Instrument Sans", sans-serif;
+    font-weight: 550;
+    font-size: 1rem;
+    margin: 0 0 0.3rem;
+    color: var(--ink);
+  }
+  .step-body { color: var(--ink-soft); font-size: 0.96rem; max-width: 60ch; }
+  .step-body p { margin: 0 0 0.5rem; }
+  .route {
+    display: inline-block;
+    font-size: 0.82rem;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 0.1rem 0.45rem;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .aside {
+    margin-top: 0.7rem;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    background: var(--accent-wash);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--rule));
+    font-size: 0.9rem;
+    color: var(--ink);
+    max-width: 58ch;
+  }
+  .aside strong { color: var(--accent); font-family: "Instrument Sans", sans-serif; font-weight: 650; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.3rem; }
+
+  /* ---- Gap audit table ---- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; background: var(--paper-raised); font-size: 0.92rem; min-width: 640px; }
+  thead th {
+    text-align: left;
+    font-family: "Instrument Sans", sans-serif;
+    font-weight: 650;
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--code-bg);
+  }
+  tbody td { padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--rule); vertical-align: top; color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { color: var(--ink); font-family: "Instrument Sans", sans-serif; font-weight: 550; font-size: 0.93rem; }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.24rem 0.55rem;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .tag-new { background: var(--new-wash); color: var(--new); }
+  .tag-change { background: var(--warn-wash); color: var(--warn); }
+  .tag-reuse { background: var(--good-wash); color: var(--good); }
+  .tag-same { background: var(--neutral-wash); color: var(--neutral-tag); }
+
+  /* ---- Scale section ---- */
+  .scale-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.1rem; }
+  .scale-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: var(--shadow);
+  }
+  .scale-card h3 { display: flex; align-items: center; gap: 0.5rem; }
+  .scale-card .status-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--good); }
+  .dot-watch { background: var(--warn); }
+  .scale-card p { font-size: 0.92rem; color: var(--ink-soft); margin: 0; }
+
+  /* ---- Open decisions ---- */
+  .decisions { display: grid; gap: 1rem; }
+  .decision {
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.1rem 1.35rem;
+    box-shadow: var(--shadow);
+  }
+  .decision .q {
+    font-family: "Instrument Sans", sans-serif;
+    font-weight: 650;
+    font-size: 0.98rem;
+    margin: 0 0 0.4rem;
+  }
+  .decision .rec { font-size: 0.9rem; color: var(--ink-soft); margin: 0; }
+  .decision .rec .rec-label { color: var(--accent); font-weight: 600; font-family: "Instrument Sans", sans-serif; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .decision.minor { border-left-color: var(--rule-strong); opacity: 0.88; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 2.2rem 0 3rem;
+    color: var(--ink-faint);
+    font-size: 0.88rem;
+  }
+  footer p { max-width: 60ch; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; flex-direction: row; flex-wrap: wrap; gap: 0.3rem 1rem; }
+    nav.toc a { border-left: none; padding-left: 0; border-bottom: 2px solid transparent; }
+    nav.toc a:hover { border-bottom-color: var(--rule-strong); }
+  }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Architecture Addendum · Carnivore Lagos Backend</p>
+    <h1>Customer Accounts &amp; Scale</h1>
+    <p class="dek">A full walk-through of the account-based ordering flow before any of it gets built — <strong>where it starts, where the current backend already helps, where it stops short, and what heavy traffic would do to it.</strong> Same review process as the original architecture document: nothing here is implemented yet.</p>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc">
+    <span class="toc-label">On this page</span>
+    <a href="#adopted">Adopted decisions</a>
+    <a href="#signup">1 · Signup</a>
+    <a href="#login">2 · Returning login</a>
+    <a href="#checkout">3 · Checkout</a>
+    <a href="#history">4 · Order history</a>
+    <a href="#admin-edge">5 · Admin edge case</a>
+    <a href="#audit">Gap audit</a>
+    <a href="#scale">Traffic &amp; scale</a>
+    <a href="#decisions">Open decisions</a>
+  </nav>
+
+  <main>
+    <section id="adopted">
+      <h2>Adopted, from your last two notes</h2>
+      <div class="adopted">
+        <ul>
+          <li>Email is collected and verified <strong>once, at signup</strong> — never re-requested at checkout.</li>
+          <li>Phone number + SMS one-time code is the <strong>only</strong> login mechanism after signup.</li>
+          <li>An account is <strong>mandatory to place an order</strong> — but browsing the menu stays open to everyone, no login wall on that.</li>
+          <li>A real order-confirmation <strong>receipt email sends automatically</strong> after a successful payment. This wasn't built before; it's in scope now.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="signup">
+      <h2><span class="h2-index">01</span> First-time signup</h2>
+      <p class="lede">Two verifications, not one: the phone number proves who can log in later; the email proves where a receipt can actually land. They happen back to back, but only the first one is required before the account is usable at all.</p>
+
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Enter phone number</div>
+          <div class="step-body"><p><span class="route">POST /api/auth/otp/request</span> — a 6-digit code is texted to the number. Rate-limited by phone <em>and</em> by IP, because unlike admin-login throttling, abuse here has a direct SMS cost.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">Enter the code</div>
+          <div class="step-body"><p><span class="route">POST /api/auth/otp/verify</span> — phone confirmed, a <code>Customer</code> row is created, a session cookie is issued immediately.</p>
+          <div class="aside"><strong>Decision baked in</strong>They can browse and build a cart right now, on this session — full account access doesn't wait on the email step below.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-title">Name and email</div>
+          <div class="step-body"><p>Asked once, right after phone verification — not buried at checkout. Email format is validated, nothing more, at this point.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-title">Verify the email</div>
+          <div class="step-body"><p><span class="route">POST /api/auth/email/verify/request</span> sends a code or link; <span class="route">POST /api/auth/email/verify/confirm</span> marks <code>Customer.emailVerifiedAt</code>.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-title">Gate is at the money step, not the door</div>
+          <div class="step-body"><p>If they close the tab here, they keep full access — logged in, cart intact. Only <span class="route">POST /api/payments/initialize</span> checks <code>emailVerifiedAt</code>. A dropped-off signup never costs them their cart; it just asks them to finish verifying the moment they try to pay.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="login">
+      <h2><span class="h2-index">02</span> Returning customer</h2>
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Same phone-entry screen</div>
+          <div class="step-body"><p>Same <span class="route">POST /api/auth/otp/request</span> endpoint as signup — it looks up the phone number itself and decides new vs. returning. One screen for both cases; the customer never has to know which one they are.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">Enter the code, session issued</div>
+          <div class="step-body"><p>If <code>emailVerifiedAt</code> is still null from an unfinished signup, they're dropped back into step&nbsp;3 of signup at the payment step — not before.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="checkout">
+      <h2><span class="h2-index">03</span> Checkout, accounts-only</h2>
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Quote stays public</div>
+          <div class="step-body"><p><span class="route">POST /api/checkout/quote</span> needs no login — anyone can see what their cart would cost before committing to an account. Creates nothing, so there's nothing to protect.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">Placing the order requires a session</div>
+          <div class="step-body"><p><span class="route">POST /api/orders</span> gains a <code>requireCustomer()</code> check — the same pattern <code>requireAdmin()</code> already uses. <code>customerId</code> attaches automatically; name/phone/email pre-fill from the profile but stay editable per order, in case they're ordering for someone else.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-title">Payment initialize gets simpler</div>
+          <div class="step-body"><p>Today's "no email on file" error becomes unreachable — a verified email is guaranteed before an account can check out at all.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-title">Receipt fires once, on success</div>
+          <div class="step-body"><p>Added inside <code>applyPaystackOutcome</code> — the one function both the verify route and the webhook already share — so it inherits the same idempotency that prevents double-processing. One payment success, one email, regardless of which of the two paths detects it first.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="history">
+      <h2><span class="h2-index">04</span> Order history &amp; profile</h2>
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Profile and history</div>
+          <div class="step-body"><p><span class="route">GET /api/me</span> · <span class="route">GET /api/me/orders</span> · <span class="route">GET /api/me/orders/{orderNumber}</span> — all auth'd by the session cookie, no query-string tricks needed.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">The old share-link stays, on the side</div>
+          <div class="step-body"><p>Today's <span class="route">GET /api/orders/{orderNumber}?ref=</span> — order number plus payment reference as a stand-in for a login — was built for a guest-only world, but it's still genuinely useful as a shareable receipt link (forward it to whoever's picking up the order). Recommend keeping it alongside the new authenticated history, not replacing it.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin-edge">
+      <h2><span class="h2-index">05</span> The case this doesn't cover yet</h2>
+      <p>If a staff member ever takes an order over the phone or at the counter and keys it in on your behalf — there's no path for that today, and account-only checkout doesn't add one either. Every order still has to come from a signed-in customer hitting <span class="route">POST /api/orders</span> themselves. If walk-in or phone orders are part of how the restaurant actually runs, that's a genuinely separate admin-side feature — flagged below as an open decision, not assumed either way.</p>
+    </section>
+
+    <section id="audit">
+      <h2>Gap audit against what's already built</h2>
+      <p class="lede" style="margin-bottom: 1.3rem;">Every capability the flow above needs, checked against the actual code — not a guess.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Capability</th><th>Status</th><th>What it takes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Phone OTP send &amp; verify</td><td><span class="tag tag-new">New</span></td><td>New <code>Customer</code> + hashed-OTP table, two routes, an SMS provider account.</td></tr>
+            <tr><td>Email verification</td><td><span class="tag tag-new">New</span></td><td>New field + two routes, an email provider account.</td></tr>
+            <tr><td>Customer session cookie</td><td><span class="tag tag-new">New</span></td><td>Mirrors the existing <code>session.ts</code> pattern exactly — same signing, separate cookie name from <code>admin_session</code>.</td></tr>
+            <tr><td>Order → Customer link</td><td><span class="tag tag-new">New</span></td><td>One nullable <code>Order.customerId</code> column, <code>onDelete: SetNull</code> — same pattern already used for <code>OrderItem.productId</code>.</td></tr>
+            <tr><td>Order history endpoints</td><td><span class="tag tag-new">New</span></td><td>Trivial once the column above exists — one indexed query.</td></tr>
+            <tr><td>Receipt email</td><td><span class="tag tag-new">New</span></td><td>Email provider + one trigger inside <code>applyPaystackOutcome</code>.</td></tr>
+            <tr><td>Guest checkout, as it works today</td><td><span class="tag tag-change">Changes</span></td><td><code>POST /api/orders</code> goes from open to requiring <code>requireCustomer()</code>.</td></tr>
+            <tr><td>Rate-limiting infrastructure</td><td><span class="tag tag-reuse">Reusable</span></td><td>The generic DB-backed limiter already exists — OTP routes just need new keys.</td></tr>
+            <tr><td>Idempotent order creation</td><td><span class="tag tag-same">Unaffected</span></td><td>Idempotency-key + collision-retry logic doesn't care who's ordering.</td></tr>
+            <tr><td>Payment lifecycle &amp; webhook</td><td><span class="tag tag-same">Unaffected</span></td><td>Server-authoritative, no session context involved either way.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="scale">
+      <h2>What heavy traffic does to this</h2>
+      <p class="lede" style="margin-bottom: 1.3rem;">Accounts add one genuinely new stress point — OTP volume. Everything else either already scales or is an infrastructure/plan question, not a code one.</p>
+      <div class="scale-grid">
+        <div class="scale-card">
+          <h3><span class="status-dot dot-watch"></span>OTP rate limiting</h3>
+          <p>The rate limiter is Postgres-backed, not Redis — a deliberate earlier call to avoid extra infra. Fine at moderate volume, but OTP traffic is higher-volume than admin login ever was, and abuse costs real SMS money on top of the usual DoS risk. Worth watching; <strong>Redis (Upstash, serverless-friendly) is the first upgrade to reach for</strong> once real signup volume shows up — not something to pre-build now.</p>
+        </div>
+        <div class="scale-card">
+          <h3><span class="status-dot dot-ok"></span>Database connections</h3>
+          <p>Neon's pooled connection via the serverless driver adapter was already built to survive function scale-out. Holds up — just keep an eye on your Neon plan's compute/connection ceiling as an ops number, not a code fix.</p>
+        </div>
+        <div class="scale-card">
+          <h3><span class="status-dot dot-watch"></span>SMS provider throttling</h3>
+          <p>Providers cap sends per second on lower tiers. A signup burst (a promo, a press mention) can hit that ceiling. The request route needs a timeout and a clear "try again" response rather than letting the function hang on a slow provider call.</p>
+        </div>
+        <div class="scale-card">
+          <h3><span class="status-dot dot-ok"></span>Order creation under load</h3>
+          <p>The idempotency-key race handling and the order-number collision retry (31⁶ ≈ 887M combinations) were already built for concurrent bursts. Accounts don't touch this path's correctness at all.</p>
+        </div>
+        <div class="scale-card">
+          <h3><span class="status-dot dot-ok"></span>Function concurrency</h3>
+          <p>Netlify scales functions horizontally by default, bounded by your plan's concurrency ceiling — worth a quick check if a real spike (a launch, a promo) is expected, but it's a plan setting, not something this codebase controls.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <h2>Still need your call, before any of this gets built</h2>
+      <div class="decisions">
+        <div class="decision">
+          <p class="q">Is a verified email required to browse and build a cart, or only to pay?</p>
+          <p class="rec"><span class="rec-label">Recommend</span> — gate it at payment only. Losing someone's cart because an email hasn't arrived yet is a worse outcome than letting them shop first.</p>
+        </div>
+        <div class="decision">
+          <p class="q">One phone-entry screen for both signup and login, or two separate flows?</p>
+          <p class="rec"><span class="rec-label">Recommend</span> — one screen. Same security either way; fewer decisions for the customer to make correctly.</p>
+        </div>
+        <div class="decision">
+          <p class="q">Do staff ever need to key in walk-in or phone orders without a customer account?</p>
+          <p class="rec"><span class="rec-label">Needs your answer</span> — this determines whether an admin-side order-creation path is in scope alongside everything above.</p>
+        </div>
+        <div class="decision">
+          <p class="q">Which SMS provider — Termii, Africa's Talking, or another?</p>
+          <p class="rec"><span class="rec-label">Needs your answer</span> — either works technically; this needs an account and API key from you regardless of which.</p>
+        </div>
+        <div class="decision minor">
+          <p class="q">Email provider for verification codes and receipts?</p>
+          <p class="rec"><span class="rec-label">Proceeding with</span> Resend, unless you'd rather use one you already have an account with (Postmark, SES).</p>
+        </div>
+        <div class="decision minor">
+          <p class="q">Keep the old order-number + reference share-link alive?</p>
+          <p class="rec"><span class="rec-label">Proceeding with</span> yes — it's harmless and useful as a forwardable receipt link.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Nothing above is implemented yet — this is the walk-through you asked for, checked against the real code rather than assumed. Once the open decisions are settled, implementation starts directly from this document, the same way the original architecture doc led into Step 12.</p>
+  </div>
+</footer>
