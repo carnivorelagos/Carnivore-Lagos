@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClockCounterClockwise, ForkKnife, House, ShoppingBag } from "@phosphor-icons/react";
+import { ClockCounterClockwise, ForkKnife, ShoppingBag } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useCartSheet } from "@/components/store/CartSheet";
@@ -33,10 +33,6 @@ export function BottomNav() {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_88%,transparent)] backdrop-blur-md sm:hidden"
     >
-      <Link href="/" className={itemClass(isActive("/"))}>
-        <House weight={isActive("/") ? "fill" : "regular"} className="size-[22px]" />
-        Home
-      </Link>
       <Link href="/menu" className={itemClass(isActive("/menu"))}>
         <ForkKnife weight={isActive("/menu") ? "fill" : "regular"} className="size-[22px]" />
         Menu

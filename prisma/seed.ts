@@ -91,8 +91,8 @@ async function main() {
   // order given by the client. Every product carries a fixed id so the
   // upsert below is idempotent — reseeding never creates duplicates.
   const CATEGORIES = [
-    { key: "carnivoreGrill", name: "Carnivore Grill", sortOrder: 1 },
-    { key: "mealComboSides", name: "Meal Combo & Sides", sortOrder: 2 },
+    { key: "carnivoreGrill", name: "Grill", sortOrder: 1 },
+    { key: "mealComboSides", name: "Combos & Sides", sortOrder: 2 },
     { key: "shawarma", name: "Shawarma", sortOrder: 3 },
     { key: "drinks", name: "Drinks", sortOrder: 4 },
     { key: "smoothies", name: "Smoothies", sortOrder: 5 },
