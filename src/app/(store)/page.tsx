@@ -9,6 +9,9 @@ import { buttonVariants } from "@/components/ui/buttonVariants";
 import { FeaturedGrill } from "@/components/store/FeaturedGrill";
 import { BRAND, PLACEHOLDER_IMAGES } from "@/lib/client/brand";
 
+// Kept for a possible future restore — not currently rendered (the home
+// page is menu-first now: FeaturedGrill only, then the footer). See the
+// commented-out JSX below.
 const GRILL_STORY = [
   {
     icon: Fire,
@@ -39,7 +42,12 @@ const WHAT_WE_GRILL = [
 export default function HomePage() {
   return (
     <>
-      {/* Hero ---------------------------------------------------------- */}
+      {/* Hero, story, "what we grill" and the closing CTA band are
+          disabled per the client's request: home page is menu-first now —
+          straight into "Straight from the grill", then the footer. Left
+          in place (commented out, not deleted) in case they're wanted
+          back later.
+
       <section className="relative isolate overflow-hidden">
         <Image
           src={PLACEHOLDER_IMAGES.hero.src}
@@ -82,11 +90,11 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      */}
 
-      {/* Featured (real data) --------------------------------------- */}
-      <FeaturedGrill />
+      <FeaturedGrill standalone />
 
-      {/* Story: three plain rows, not cards ------------------------ */}
+      {/*
       <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)]">
         <div className="shell gutter grid divide-y divide-[var(--color-line)] py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-0">
           {GRILL_STORY.map(({ icon: Icon, title, body }, i) => (
@@ -104,7 +112,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* What we grill: editorial split -------------------------- */}
       <section className="shell gutter grid gap-10 py-16 sm:grid-cols-2 sm:items-center sm:py-24">
         <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)]">
           <Image
@@ -146,7 +153,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Closing band ------------------------------------------- */}
       <section className="relative isolate overflow-hidden border-t border-[var(--color-line)]">
         <div
           aria-hidden
@@ -161,6 +167,7 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+      */}
     </>
   );
 }

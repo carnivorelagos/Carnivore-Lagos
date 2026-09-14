@@ -50,6 +50,10 @@ export const getProduct = (id: string) => apiRead<ProductDetail>(`/api/products/
 
 export const getPublicSettings = () => apiRead<PublicSettings>("/api/settings/public");
 
+/** Best-effort: turns a delivery pin into a human-readable address. */
+export const reverseGeocode = (lat: number, lng: number) =>
+  apiRead<{ address: string | null }>("/api/geocode/reverse", { query: { lat, lng } });
+
 /** Full active menu for the client-side smart search. */
 export const getMenuIndex = () => apiRead<{ items: MenuIndexItem[] }>("/api/menu/index");
 

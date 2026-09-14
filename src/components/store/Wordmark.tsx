@@ -3,9 +3,8 @@ import { cn } from "@/lib/client/cn";
 import { BRAND } from "@/lib/client/brand";
 
 /**
- * Text wordmark (no logo asset yet). Anton, uppercase, locked tight, with
- * the red coal square standing in for the mark on the packaging. Swap for
- * the real logo when it arrives.
+ * Text wordmark (no logo asset yet). Anton, uppercase, locked tight.
+ * Swap for the real logo when it arrives.
  */
 export function Wordmark({
   className,
@@ -25,16 +24,12 @@ export function Wordmark({
   const inner = (
     <span
       className={cn(
-        "inline-flex items-center gap-[0.4em] font-display uppercase leading-none tracking-[0.01em] text-[var(--color-text)]",
+        "inline-flex items-center gap-[0.28em] font-display uppercase leading-none tracking-[0.01em] text-[var(--color-text)]",
         sizeClass,
         className,
       )}
     >
       <span>Carnivore</span>
-      <span
-        aria-hidden
-        className="inline-block size-[0.28em] shrink-0 -translate-y-[0.06em] bg-[var(--color-accent)]"
-      />
       <span className="text-[var(--color-muted)]">Lagos</span>
     </span>
   );

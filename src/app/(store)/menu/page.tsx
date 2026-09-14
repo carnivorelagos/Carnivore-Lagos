@@ -93,11 +93,11 @@ function MenuBrowser() {
       ) : null}
 
       <div className="shell gutter py-6 sm:py-8">
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
+        <div className="mb-5 flex flex-wrap items-start gap-3">
+          <div className="w-full min-w-0">
             <SmartSearch onActiveChange={setSearching} />
           </div>
-          <div className="shrink-0 pt-0.5">
+          <div className="shrink-0">
             <HelpMeChoose />
           </div>
         </div>
@@ -167,6 +167,10 @@ function MenuBrowser() {
 export default function MenuPage() {
   return (
     <>
+      {/* Hero removed per client request — not necessary on the menu page.
+          Left in place (commented out, not deleted) in case it's wanted
+          back later.
+
       <section className="relative isolate overflow-hidden border-b border-[var(--color-line)]">
         <Image
           src={PLACEHOLDER_IMAGES.menuHero.src}
@@ -194,6 +198,7 @@ export default function MenuPage() {
           </h2>
         </div>
       </section>
+      */}
 
       <Suspense fallback={<div className="shell gutter py-10"><ProductGridSkeleton count={12} /></div>}>
         <MenuBrowser />

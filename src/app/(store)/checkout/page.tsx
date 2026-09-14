@@ -318,7 +318,7 @@ export default function CheckoutPage() {
           {fulfillment === "DELIVERY" ? (
             <section className="space-y-4">
               <h2 className="font-display text-lg">Where to?</h2>
-              <DeliveryMapField value={pin} onChange={setPin} />
+              <DeliveryMapField value={pin} onChange={setPin} onAddressResolved={setAddress} />
               {errors.pin ? (
                 <p className="text-[12.5px] text-[var(--color-danger)]">{errors.pin}</p>
               ) : null}
