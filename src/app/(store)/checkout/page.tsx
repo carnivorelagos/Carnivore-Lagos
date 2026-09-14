@@ -456,12 +456,6 @@ export default function CheckoutPage() {
                 )}
               </dd>
             </div>
-            {quote?.deliveryDistanceKm != null ? (
-              <div className="flex justify-between text-[12px] text-[var(--color-subtle)]">
-                <dt>Distance</dt>
-                <dd className="tnum">{quote.deliveryDistanceKm.toFixed(1)} km</dd>
-              </div>
-            ) : null}
           </dl>
 
           <div className="my-4 border-t border-[var(--color-line)]" />
