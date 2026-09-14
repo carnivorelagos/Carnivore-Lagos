@@ -135,6 +135,42 @@ export async function sendEmailVerificationCode(email: string, code: string): Pr
 }
 
 /**
+ * Security alert: fired on every successful admin sign-in, unconditionally
+ * — this is deliberately noisy by design (an unexpected entry in a daily
+ * digest is easy to miss; an email the moment it happens is not). Recipient
+ * is a single configurable address, not the admin's own — the point is a
+ * second pair of eyes on the account. A no-op if ADMIN_LOGIN_ALERT_EMAIL
+ * isn't set, same as every other optional-provider feature in this app.
+ */
+export async function sendAdminLoginAlert(details: {
+  adminEmail: string;
+  role: string;
+  ip: string;
+  userAgent: string | null;
+  at: Date;
+}): Promise<void> {
+  const to = process.env.ADMIN_LOGIN_ALERT_EMAIL?.trim();
+  if (!to) return;
+
+  const when = details.at.toISOString();
+  const ua = details.userAgent ?? "unknown";
+  await getEmailProvider().send({
+    to,
+    subject: `Admin sign-in: ${details.adminEmail}`,
+    text:
+      `${details.adminEmail} (${details.role}) signed in to the ${APP_NAME} admin dashboard.\n\n` +
+      `Time: ${when}\nIP: ${details.ip}\nBrowser: ${ua}\n\n` +
+      `If this wasn't you or your team, change the admin password immediately.`,
+    html:
+      `<p>${escapeHtml(details.adminEmail)} (${escapeHtml(details.role)}) signed in to the ${APP_NAME} admin dashboard.</p>` +
+      `<table style="font-size:13px;color:#444"><tr><td style="padding-right:12px;color:#888">Time</td><td>${escapeHtml(when)}</td></tr>` +
+      `<tr><td style="padding-right:12px;color:#888">IP</td><td>${escapeHtml(details.ip)}</td></tr>` +
+      `<tr><td style="padding-right:12px;color:#888">Browser</td><td>${escapeHtml(ua)}</td></tr></table>` +
+      `<p style="color:#666;font-size:13px">If this wasn't you or your team, change the admin password immediately.</p>`,
+  });
+}
+
+/**
  * "Secure your order history" magic link (amendment 4). One tap after an
  * order: click the link, the address is verified, and this device's
  * history + saved card become recoverable from any device by re-verifying
