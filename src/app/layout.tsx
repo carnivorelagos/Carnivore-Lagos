@@ -1,14 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import { Suspense } from "react";
+import { Anton, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/providers/ToastProvider";
+import { RouteProgress } from "@/components/system/RouteProgress";
 
-const fraunces = Fraunces({
+/**
+ * Display face. Anton — a single heavy, condensed grotesque — is the
+ * closest legible stand-in for the brushed Carnivore Lagos lettering.
+ * Used only for h1/h2 and the wordmark; the sans carries everything else.
+ */
+const anton = Anton({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-fraunces",
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  variable: "--font-anton",
+  weight: "400",
 });
 
 const inter = Inter({
@@ -43,7 +49,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#15100d",
+  themeColor: "#0c0b0b",
   colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
@@ -56,9 +62,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

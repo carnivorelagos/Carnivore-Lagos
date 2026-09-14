@@ -18,6 +18,7 @@ import type {
   CreateOrderBody,
   CreatedOrder,
   Customer,
+  DeviceHistory,
   ImageSignature,
   MyOrderDetail,
   MyOrderListItem,
@@ -30,6 +31,7 @@ import type {
   ProductListResponse,
   PublicOrder,
   PublicSettings,
+  ReorderResult,
 } from "./types";
 
 /* ----------------------------------------------------------------------
@@ -65,10 +67,21 @@ export const getQuote = (body: CheckoutRequestBody) =>
 export const createOrder = (body: CreateOrderBody) =>
   apiFetch<CreatedOrder>("/api/orders", { body });
 
-export const getPublicOrder = (orderNumber: string, ref: string) =>
-  apiRead<PublicOrder>(`/api/orders/${encodeURIComponent(orderNumber)}`, {
-    query: { ref },
-  });
+/** Public order tracking by unguessable slug (no second factor). */
+export const getOrderBySlug = (slug: string) =>
+  apiRead<PublicOrder>(`/api/orders/${encodeURIComponent(slug)}`);
+
+/* ----------------------------------------------------------------------
+   Device history / no-login (amendments 2-4)
+---------------------------------------------------------------------- */
+
+export const getHistory = () => apiRead<DeviceHistory>("/api/history");
+
+export const reorder = (trackingSlug: string) =>
+  apiFetch<ReorderResult>("/api/history/reorder", { body: { trackingSlug } });
+
+export const secureHistory = (email: string) =>
+  apiFetch<{ sent: boolean }>("/api/history/secure", { body: { email } });
 
 /* ----------------------------------------------------------------------
    Payments
@@ -81,6 +94,12 @@ export const verifyPayment = (reference: string) =>
   apiFetch<PaymentVerifyResult>("/api/payments/verify", {
     method: "GET",
     query: { reference },
+  });
+
+/** Pay a still-unpaid order with the device's saved card (amendment 3). */
+export const chargeSavedCard = (trackingSlug: string) =>
+  apiFetch<PaymentVerifyResult>("/api/payments/charge-authorization", {
+    body: { trackingSlug },
   });
 
 /* ----------------------------------------------------------------------
@@ -133,6 +152,14 @@ export const savePushSubscription = (sub: {
 
 export const deletePushSubscription = (endpoint: string) =>
   apiFetch<{ removed: boolean }>("/api/me/push/subscribe", { method: "DELETE", body: { endpoint } });
+
+export const saveAdminPushSubscription = (sub: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}) => apiFetch<{ saved: boolean }>("/api/admin/push/subscribe", { body: { subscription: sub } });
+
+export const deleteAdminPushSubscription = (endpoint: string) =>
+  apiFetch<{ removed: boolean }>("/api/admin/push/subscribe", { method: "DELETE", body: { endpoint } });
 
 /* ----------------------------------------------------------------------
    Admin

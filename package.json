@@ -11,6 +11,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "products:images": "node scripts/generate-product-images.mjs",
     "docs:build": "node scripts/build-openapi.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

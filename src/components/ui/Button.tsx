@@ -1,49 +1,13 @@
-import { forwardRef } from "react";
+"use client";
+
+import { forwardRef, useEffect, useState } from "react";
 import { cn } from "@/lib/client/cn";
+import { buttonVariants, type Size, type Variant } from "./buttonVariants";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "quiet";
-type Size = "sm" | "md" | "lg";
-
-const BASE =
-  "relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium " +
-  "transition-[transform,background-color,border-color,color,opacity] duration-150 " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] " +
-  "active:translate-y-px disabled:pointer-events-none disabled:opacity-55";
-
-const VARIANTS: Record<Variant, string> = {
-  primary:
-    "bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)] " +
-    "shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]",
-  secondary:
-    "border border-[var(--color-line-strong)] bg-transparent text-[var(--color-text)] " +
-    "hover:bg-[color-mix(in_oklab,var(--color-muted)_12%,transparent)] hover:border-[var(--color-muted)]",
-  ghost:
-    "bg-transparent text-[var(--color-text)] hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)]",
-  quiet:
-    "bg-transparent text-[var(--color-muted)] hover:text-[var(--color-text)]",
-  danger:
-    "bg-[var(--color-danger)] text-white hover:brightness-95",
-};
-
-const SIZES: Record<Size, string> = {
-  sm: "h-9 px-3 text-[13px]",
-  md: "h-11 px-4 text-sm",
-  lg: "h-12 px-5 text-[15px]",
-};
-
-export function buttonVariants({
-  variant = "primary",
-  size = "md",
-  fullWidth = false,
-  className,
-}: {
-  variant?: Variant;
-  size?: Size;
-  fullWidth?: boolean;
-  className?: string;
-} = {}): string {
-  return cn(BASE, VARIANTS[variant], SIZES[size], fullWidth && "w-full", className);
-}
+// Re-exported so existing client imports (`from "@/components/ui/Button"`)
+// keep working. Server Components must import from "./buttonVariants".
+export { buttonVariants };
+export type { Size, Variant };
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -52,7 +16,18 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
   icon?: React.ReactNode;
   iconRight?: React.ReactNode;
+  /**
+   * Shown next to an inline spinner while `loading` — a specific label for
+   * a known-slow action ("Placing your order…") instead of a bare spinner.
+   */
+  pendingLabel?: React.ReactNode;
+  /** Replaces `pendingLabel` once the wait passes `slowAfterMs`. */
+  slowLabel?: React.ReactNode;
+  slowAfterMs?: number;
 };
+
+const SPINNER =
+  "size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent";
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -62,6 +37,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     loading = false,
     icon,
     iconRight,
+    pendingLabel,
+    slowLabel,
+    slowAfterMs = 4500,
     className,
     children,
     disabled,
@@ -70,6 +48,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!loading || slowLabel == null) {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), slowAfterMs);
+    return () => clearTimeout(t);
+  }, [loading, slowLabel, slowAfterMs]);
+
+  // Labelled loading: inline spinner + a specific message, message visible.
+  const labelled = loading && (pendingLabel != null || slowLabel != null);
+  const message = slow && slowLabel != null ? slowLabel : (pendingLabel ?? children);
+
   return (
     <button
       ref={ref}
@@ -79,21 +72,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       className={buttonVariants({ variant, size, fullWidth, className })}
       {...rest}
     >
-      {loading ? (
-        <span
-          aria-hidden
-          className="absolute size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
-        />
-      ) : null}
+      {loading && !labelled ? <span aria-hidden className={cn(SPINNER, "absolute")} /> : null}
       <span
-        className={cn(
-          "inline-flex items-center gap-2",
-          loading && "opacity-0",
-        )}
+        className={cn("inline-flex items-center gap-2", loading && !labelled && "opacity-0")}
+        aria-live={labelled ? "polite" : undefined}
       >
-        {icon ? <span className="-ml-0.5 shrink-0">{icon}</span> : null}
-        {children}
-        {iconRight ? <span className="-mr-0.5 shrink-0">{iconRight}</span> : null}
+        {loading && labelled ? (
+          <span aria-hidden className={SPINNER} />
+        ) : icon ? (
+          <span className="-ml-0.5 shrink-0">{icon}</span>
+        ) : null}
+        {labelled ? (
+          <span key={slow ? "slow" : "pending"} className="animate-fade">
+            {message}
+          </span>
+        ) : (
+          children
+        )}
+        {!loading && iconRight ? <span className="-mr-0.5 shrink-0">{iconRight}</span> : null}
       </span>
     </button>
   );

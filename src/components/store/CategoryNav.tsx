@@ -18,17 +18,17 @@ export function CategoryNav({
 }) {
   const pill = (active: boolean) =>
     cn(
-      "shrink-0 snap-start whitespace-nowrap rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors",
+      "shrink-0 snap-start whitespace-nowrap rounded-full border px-3.5 py-2 text-[12px] font-semibold uppercase tracking-[0.06em] transition-colors",
       active
-        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-on-accent)]"
-        : "border-[var(--color-line-strong)] text-[var(--color-muted)] hover:border-[var(--color-muted)] hover:text-[var(--color-text)]",
+        ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-on-accent)] shadow-[var(--shadow-ember)]"
+        : "border-[var(--color-line-strong)] text-[var(--color-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text)]",
     );
 
   return (
-    <div className="sticky top-14 z-40 -mx-[1px] border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_88%,transparent)] backdrop-blur-md sm:top-16">
+    <div className="sticky top-14 z-40 -mx-[1px] border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_85%,transparent)] backdrop-blur-md sm:top-16">
       <div className="shell gutter">
         <div
-          className="flex snap-x gap-2 overflow-x-auto py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="edge-fade flex snap-x gap-2 overflow-x-auto py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Menu categories"
         >

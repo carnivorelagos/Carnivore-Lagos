@@ -21,11 +21,16 @@ export function FeaturedGrill() {
 
   return (
     <section className="shell gutter py-14 sm:py-20">
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <h2 className="font-display text-2xl sm:text-3xl">Off the coals</h2>
+      <div className="mb-7 flex items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow mb-2 text-[var(--color-subtle)]">Straight from the grill</p>
+          <h2 className="font-display text-2xl uppercase leading-none tracking-[0.01em] sm:text-4xl">
+            Off the coals
+          </h2>
+        </div>
         <Link
           href="/menu"
-          className="inline-flex items-center gap-1.5 text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)]"
+          className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] transition-colors hover:text-[var(--color-accent)]"
         >
           Full menu
           <ArrowRight className="size-4" aria-hidden />

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/client/cn";
 import { useAdminAuth } from "@/components/providers/AdminAuthProvider";
 import { Spinner } from "@/components/ui/feedback";
+import { AdminOrderAlerts } from "@/components/admin/AdminOrderAlerts";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: SquaresFour, exact: true },
@@ -39,10 +40,11 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
+              "relative flex items-center gap-2.5 rounded-[var(--radius-md)] py-2 pl-4 pr-3 text-[13px] font-semibold transition-colors",
+              "before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--color-accent)] before:transition-opacity",
               active
-                ? "bg-[color-mix(in_oklab,var(--color-accent)_12%,transparent)] text-[var(--color-accent)]"
-                : "text-[var(--color-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]",
+                ? "bg-[color-mix(in_oklab,var(--color-accent)_10%,transparent)] text-[var(--color-accent)] before:opacity-100"
+                : "text-[var(--color-muted)] before:opacity-0 hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]",
             )}
           >
             <Icon className="size-[18px]" weight={active ? "fill" : "regular"} aria-hidden />
@@ -82,16 +84,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-[100dvh]">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-4 lg:flex">
-        <div className="px-3 pb-4">
-          <p className="font-display text-[15px] font-medium text-[var(--color-text)]">
-            Carnivore Lagos
+        <div className="px-4 pb-5 pt-1">
+          <p className="flex items-center gap-1.5 font-display text-[16px] uppercase leading-none tracking-[0.01em] text-[var(--color-text)]">
+            Carnivore
+            <span aria-hidden className="inline-block size-1.5 bg-[var(--color-accent)]" />
+            Lagos
           </p>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--color-subtle)]">
-            Admin
+          <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-subtle)]">
+            Admin console
           </p>
         </div>
         <NavLinks />
         <div className="mt-auto border-t border-[var(--color-line)] px-3 pt-3">
+          <div className="mb-2.5">
+            <AdminOrderAlerts />
+          </div>
           <p className="truncate text-[12px] text-[var(--color-muted)]">{admin.email}</p>
           <button
             type="button"
@@ -115,16 +122,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           />
           <div className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-[var(--color-line)] bg-[var(--color-surface)] p-3">
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="font-display text-sm font-medium">Admin</span>
+              <span className="font-display text-[15px] uppercase tracking-[0.04em]">Admin</span>
               <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Close">
                 <X className="size-5 text-[var(--color-muted)]" />
               </button>
             </div>
             <NavLinks onNavigate={() => setDrawerOpen(false)} />
+            <div className="mt-auto px-3 pt-3">
+              <AdminOrderAlerts compact />
+            </div>
             <button
               type="button"
               onClick={() => void logout()}
-              className="mt-auto inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[var(--color-muted)] hover:text-[var(--color-danger)]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[var(--color-muted)] hover:text-[var(--color-danger)]"
             >
               <SignOut className="size-4" aria-hidden />
               Sign out
@@ -143,7 +153,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           >
             <List className="size-5" />
           </button>
-          <span className="font-display text-sm font-medium">Carnivore Lagos Admin</span>
+          <span className="flex items-center gap-1.5 font-display text-[15px] uppercase tracking-[0.03em]">
+            Carnivore
+            <span aria-hidden className="inline-block size-1.5 bg-[var(--color-accent)]" />
+            Lagos
+          </span>
         </header>
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>

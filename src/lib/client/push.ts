@@ -1,5 +1,9 @@
 import { savePushSubscription, deletePushSubscription } from "./endpoints";
 
+type PushSubJSON = { endpoint: string; keys: { p256dh: string; auth: string } };
+type SaveFn = (sub: PushSubJSON) => Promise<unknown>;
+type RemoveFn = (endpoint: string) => Promise<unknown>;
+
 /**
  * Browser-side Web Push wiring. All of this is a no-op when the VAPID
  * public key isn't configured or the browser doesn't support push, so
@@ -47,8 +51,12 @@ function toJSON(sub: PushSubscription): { endpoint: string; keys: { p256dh: stri
   };
 }
 
-/** Ask permission, subscribe, and persist server-side. Returns true on success. */
-export async function enablePush(): Promise<boolean> {
+/**
+ * Ask permission, subscribe this browser, and persist server-side.
+ * Defaults to the customer endpoints; pass the admin `save` fn to register
+ * the same browser for admin alerts instead. Returns true on success.
+ */
+export async function enablePush(save: SaveFn = savePushSubscription): Promise<boolean> {
   if (!pushSupported()) return false;
 
   const permission = await Notification.requestPermission();
@@ -65,23 +73,32 @@ export async function enablePush(): Promise<boolean> {
     });
   }
 
-  await savePushSubscription(toJSON(sub));
+  await save(toJSON(sub));
   return true;
 }
 
-/** Unsubscribe locally and server-side. */
-export async function disablePush(): Promise<void> {
+/**
+ * Remove this browser's server-side registration. Only unsubscribes the
+ * browser-level push when `hardUnsubscribe` is true — a shared browser may
+ * still be registered for the other role (customer vs admin).
+ */
+export async function disablePush(
+  remove: RemoveFn = deletePushSubscription,
+  hardUnsubscribe = true,
+): Promise<void> {
   if (!pushSupported()) return;
   const reg = await navigator.serviceWorker.getRegistration("/");
   const sub = await reg?.pushManager.getSubscription();
-  if (sub) {
-    const endpoint = sub.endpoint;
+  if (!sub) return;
+
+  const endpoint = sub.endpoint;
+  await remove(endpoint).catch(() => undefined);
+  if (hardUnsubscribe) {
     try {
       await sub.unsubscribe();
     } catch {
       /* ignore */
     }
-    await deletePushSubscription(endpoint).catch(() => undefined);
   }
 }
 

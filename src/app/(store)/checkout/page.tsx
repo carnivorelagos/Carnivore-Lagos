@@ -23,11 +23,13 @@ import type { CheckoutQuote, FulfillmentType, LatLng } from "@/lib/client/types"
 import { TextField, TextArea } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Money } from "@/components/ui/Money";
-import { Spinner } from "@/components/ui/feedback";
+import { CheckoutSkeleton } from "@/components/store/skeletons";
 import { DeliveryMapField } from "@/components/map/DeliveryMapField";
 import { EmailVerifyPanel } from "@/components/checkout/EmailVerifyPanel";
 
-type FieldErrors = Partial<Record<"name" | "phone" | "address" | "pin" | "fulfillment", string>>;
+type FieldErrors = Partial<
+  Record<"name" | "phone" | "email" | "address" | "pin" | "fulfillment", string>
+>;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -38,6 +40,7 @@ export default function CheckoutPage() {
   const [fulfillment, setFulfillment] = useState<FulfillmentType | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<LatLng | null>(null);
   const [notes, setNotes] = useState("");
@@ -56,10 +59,8 @@ export default function CheckoutPage() {
   const redirectingRef = useRef(false);
 
   // --- Guards --------------------------------------------------------
-  useEffect(() => {
-    if (ready && !customer) router.replace("/login?redirect=/checkout");
-  }, [ready, customer, router]);
-
+  // No sign-in gate: checkout is device-based (amendment 2). The only
+  // guard left is "don't sit on an empty checkout".
   useEffect(() => {
     if (hydrated && items.length === 0 && !redirectingRef.current) {
       router.replace("/menu");
@@ -88,11 +89,17 @@ export default function CheckoutPage() {
   );
 
   const phoneClean = cleanPhone(phone);
+  const emailTrimmed = email.trim();
+  // A half-typed email must never reach the quote/order body — the server
+  // rejects it with VALIDATION_ERROR, which the quote effect swallows
+  // silently, leaving the delivery fee uncalculated and Pay disabled.
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
   const canQuote =
     !!fulfillment &&
     items.length > 0 &&
     name.trim().length > 0 &&
     isLikelyNigerianPhone(phoneClean) &&
+    (emailTrimmed === "" || emailValid) &&
     (fulfillment === "PICKUP" || !!pin);
 
   const buildBody = useCallback(
@@ -101,7 +108,7 @@ export default function CheckoutPage() {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       customerName: name.trim(),
       customerPhone: phoneClean,
-      ...(customer?.email ? { customerEmail: customer.email } : {}),
+      ...(emailValid ? { customerEmail: emailTrimmed } : {}),
       ...(fulfillment === "DELIVERY"
         ? {
             deliveryAddress: address.trim() || undefined,
@@ -110,7 +117,7 @@ export default function CheckoutPage() {
         : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     }),
-    [fulfillment, items, name, phoneClean, customer?.email, address, pin, notes],
+    [fulfillment, items, name, phoneClean, emailValid, emailTrimmed, address, pin, notes],
   );
 
   // --- Live quote (debounced) -------------------------------------
@@ -157,22 +164,20 @@ export default function CheckoutPage() {
     if (name.trim().length === 0) next.name = "Enter the name for the order.";
     if (!isLikelyNigerianPhone(phoneClean))
       next.phone = "Enter a valid Nigerian phone number.";
+    if (emailTrimmed !== "" && !emailValid)
+      next.email = "Enter a complete email, or leave it blank.";
     if (fulfillment === "DELIVERY") {
       if (!pin) next.pin = "Drop a pin for the delivery location.";
       if (address.trim().length === 0) next.address = "Add an address to help the rider.";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [fulfillment, name, phoneClean, pin, address]);
+  }, [fulfillment, name, phoneClean, emailTrimmed, emailValid, pin, address]);
 
   // --- Place order + pay --------------------------------------
   const submit = useCallback(async () => {
     setPayError(null);
     if (!validate()) return;
-    if (customer && !customer.emailVerifiedAt) {
-      setEmailGateOpen(true);
-      return;
-    }
 
     setPlacing(true);
     try {
@@ -191,12 +196,7 @@ export default function CheckoutPage() {
           redirectingRef.current = true;
           clearCheckoutSession();
           clear();
-          router.replace(`/account/orders/${order.orderNumber}`);
-          return;
-        }
-        if (c === "EMAIL_NOT_VERIFIED") {
-          setEmailGateOpen(true);
-          setPlacing(false);
+          router.replace(`/order/${order.trackingSlug}`);
           return;
         }
         throw e;
@@ -233,16 +233,14 @@ export default function CheckoutPage() {
       redirectingRef.current = true;
       clearCheckoutSession();
       clear();
-      router.replace(
-        `/order/${order.orderNumber}?ref=${encodeURIComponent(result.reference)}`,
-      );
+      router.replace(`/order/${order.trackingSlug}`);
     } catch (e) {
       const ids = unavailableProductIds(e);
       if (ids.length) setUnavailableIds(ids);
       setPayError(errorMessage(e));
       setPlacing(false);
     }
-  }, [validate, customer, buildBody, items, pin, clear, router]);
+  }, [validate, buildBody, items, pin, clear, router]);
 
   const onEmailVerified = useCallback(async () => {
     await refresh();
@@ -256,15 +254,11 @@ export default function CheckoutPage() {
   const displayTotalKobo = quote?.totalKobo ?? subtotalKobo;
 
   if (!ready || !hydrated || (items.length === 0 && !redirectingRef.current)) {
-    return (
-      <div className="shell gutter grid min-h-[50vh] place-items-center py-20">
-        <Spinner />
-      </div>
-    );
+    return <CheckoutSkeleton />;
   }
 
   return (
-    <div className="shell gutter py-6 sm:py-10">
+    <div className="shell gutter py-6 animate-reveal sm:py-10">
       <h1 className="mb-6 font-display text-3xl sm:text-4xl">Checkout</h1>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_22rem] lg:items-start">
@@ -366,9 +360,25 @@ export default function CheckoutPage() {
               />
             </div>
             <p className="text-[12px] text-[var(--color-subtle)]">
-              This is the contact for this order. Your account phone stays{" "}
-              <span className="tnum">{customer?.phone}</span>.
+              This is the contact for this order — for pickup updates or the
+              rider. No account needed.
             </p>
+            <TextField
+              label="Email for your receipt"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              optionalHint
+              value={email}
+              error={
+                errors.email ??
+                (emailTrimmed !== "" && !emailValid
+                  ? "Enter a complete email, or leave it blank."
+                  : undefined)
+              }
+              onChange={(e) => setEmail(e.target.value)}
+              hint="Needed to pay by card and to save this order to your history."
+            />
           </section>
 
           {/* Notes */}
@@ -485,6 +495,8 @@ export default function CheckoutPage() {
                 size="lg"
                 className="mt-4"
                 loading={placing}
+                pendingLabel="Placing your order…"
+                slowLabel="Still working — one moment"
                 disabled={
                   placing ||
                   !fulfillment ||
@@ -494,13 +506,13 @@ export default function CheckoutPage() {
                 onClick={() => void submit()}
                 icon={<Bag className="size-4" weight="fill" />}
               >
-                {placing ? "Opening payment…" : `Pay ${formatNaira(displayTotalKobo)}`}
+                {`Pay ${formatNaira(displayTotalKobo)}`}
               </Button>
               {payError ? (
                 <p className="mt-3 text-[12.5px] text-[var(--color-danger)]">{payError}</p>
               ) : null}
               <p className="mt-3 text-center text-[12px] text-[var(--color-subtle)]">
-                Secured by Paystack. You'll confirm card details in their window.
+                Secured by Paystack. You&apos;ll confirm card details in their window.
               </p>
             </>
           )}

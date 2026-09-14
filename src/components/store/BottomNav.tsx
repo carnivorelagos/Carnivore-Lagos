@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ForkKnife, House, ShoppingBag, User } from "@phosphor-icons/react";
+import { ClockCounterClockwise, ForkKnife, House, ShoppingBag } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 import { useCart } from "@/components/providers/CartProvider";
-import { useAuth } from "@/components/providers/AuthProvider";
 import { useCartSheet } from "@/components/store/CartSheet";
 
 /**
@@ -15,7 +14,6 @@ import { useCartSheet } from "@/components/store/CartSheet";
 export function BottomNav() {
   const pathname = usePathname();
   const { count, hydrated } = useCart();
-  const { customer } = useAuth();
   const cartSheet = useCartSheet();
 
   const isActive = (href: string) =>
@@ -23,14 +21,17 @@ export function BottomNav() {
 
   const itemClass = (active: boolean) =>
     cn(
-      "flex flex-1 flex-col items-center justify-center gap-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[11px] font-medium transition-colors",
-      active ? "text-[var(--color-text)]" : "text-[var(--color-subtle)]",
+      "relative flex flex-1 flex-col items-center justify-center gap-1 pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors",
+      "before:absolute before:inset-x-5 before:top-0 before:h-[2px] before:bg-[var(--color-accent)] before:transition-opacity before:duration-200",
+      active
+        ? "text-[var(--color-text)] before:opacity-100"
+        : "text-[var(--color-subtle)] before:opacity-0",
     );
 
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_92%,transparent)] backdrop-blur-md sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_88%,transparent)] backdrop-blur-md sm:hidden"
     >
       <Link href="/" className={itemClass(isActive("/"))}>
         <House weight={isActive("/") ? "fill" : "regular"} className="size-[22px]" />
@@ -51,15 +52,12 @@ export function BottomNav() {
         </span>
         Cart
       </button>
-      <Link
-        href={customer ? "/account" : "/login"}
-        className={itemClass(isActive("/account") || isActive("/login"))}
-      >
-        <User
-          weight={isActive("/account") || isActive("/login") ? "fill" : "regular"}
+      <Link href="/history" className={itemClass(isActive("/history"))}>
+        <ClockCounterClockwise
+          weight={isActive("/history") ? "fill" : "regular"}
           className="size-[22px]"
         />
-        Account
+        Orders
       </Link>
     </nav>
   );

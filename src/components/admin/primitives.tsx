@@ -28,9 +28,12 @@ export function PageHeader({
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl text-[var(--color-text)]">{title}</h1>
+          <h1 className="font-display text-[1.7rem] uppercase leading-none tracking-[0.005em] text-[var(--color-text)]">
+            {title}
+          </h1>
+          <span aria-hidden className="mt-2.5 block h-[3px] w-9 -skew-x-12 bg-[var(--color-accent)]" />
           {description ? (
-            <p className="mt-1 text-[13px] text-[var(--color-muted)]">{description}</p>
+            <p className="mt-3 text-[13px] text-[var(--color-muted)]">{description}</p>
           ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

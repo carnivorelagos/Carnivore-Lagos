@@ -73,6 +73,7 @@ export const PATCH = withApiHandler(async (req: NextRequest, ctx) => {
       {
         id: updated.id,
         orderNumber: updated.orderNumber,
+        trackingSlug: updated.trackingSlug,
         fulfillmentType: updated.fulfillmentType as FulfillmentType,
         customerId: updated.customerId,
         customerName: updated.customerName,

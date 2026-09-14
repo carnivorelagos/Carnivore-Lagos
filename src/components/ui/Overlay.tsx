@@ -97,7 +97,7 @@ export function Sheet({
         aria-label="Close"
         tabIndex={-1}
         onClick={close}
-        className="absolute inset-0 bg-[rgba(0,0,0,0.55)] backdrop-blur-[2px] animate-[rise_.2s_ease]"
+        className="absolute inset-0 bg-[rgba(0,0,0,0.62)] backdrop-blur-[3px] animate-[rise_.2s_ease]"
       />
       <div
         ref={panelRef}
@@ -107,8 +107,8 @@ export function Sheet({
         aria-describedby={description ? "sheet-desc" : undefined}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl border border-[var(--color-line-strong)] bg-[var(--color-bg)] shadow-[var(--shadow-pop)]",
-          "sm:h-full sm:max-h-none sm:w-[min(28rem,100vw)] sm:rounded-none sm:rounded-l-2xl",
+          "relative flex max-h-[92dvh] w-full flex-col rounded-t-[var(--radius-xl)] border border-[var(--color-line-strong)] bg-[var(--color-bg)] shadow-[var(--shadow-pop)]",
+          "sm:h-full sm:max-h-none sm:w-[min(28rem,100vw)] sm:rounded-none sm:rounded-l-[var(--radius-xl)]",
           "translate-y-0 animate-[rise_.28s_var(--ease-out-quint)]",
           className,
         )}
@@ -174,7 +174,7 @@ export function Dialog({
         aria-label="Close"
         tabIndex={-1}
         onClick={close}
-        className="absolute inset-0 bg-[rgba(0,0,0,0.55)] backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[rgba(0,0,0,0.62)] backdrop-blur-[3px]"
       />
       <div
         ref={panelRef}
@@ -183,7 +183,7 @@ export function Dialog({
         aria-label={title}
         tabIndex={-1}
         className={cn(
-          "relative flex w-full max-w-md flex-col rounded-t-2xl border border-[var(--color-line-strong)] bg-[var(--color-bg)] shadow-[var(--shadow-pop)] sm:rounded-2xl",
+          "relative flex w-full max-w-md flex-col rounded-t-[var(--radius-xl)] border border-[var(--color-line-strong)] bg-[var(--color-bg)] shadow-[var(--shadow-pop)] sm:rounded-[var(--radius-xl)]",
           "animate-[rise_.24s_var(--ease-out-quint)]",
           className,
         )}

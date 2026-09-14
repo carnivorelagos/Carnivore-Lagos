@@ -9,11 +9,12 @@ import type { AdminSettings, LatLng } from "@/lib/client/types";
 import { useAdminData } from "@/components/admin/useAdminData";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader, Card } from "@/components/admin/primitives";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { TextField } from "@/components/ui/form";
 import { Toggle } from "@/components/admin/Toggle";
 import { Button } from "@/components/ui/Button";
 import { DeliveryMapField } from "@/components/map/DeliveryMapField";
-import { ErrorState, Spinner } from "@/components/ui/feedback";
+import { ErrorState } from "@/components/ui/feedback";
 
 type FormState = {
   restaurantName: string;
@@ -53,11 +54,7 @@ export default function AdminSettingsPage() {
   }, [data, form]);
 
   if (status === "loading" || !form) {
-    return (
-      <div className="grid min-h-[40vh] place-items-center">
-        <Spinner />
-      </div>
-    );
+    return <AdminPageSkeleton rows={6} />;
   }
   if (status === "error") {
     return (

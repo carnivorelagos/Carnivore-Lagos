@@ -34,6 +34,7 @@ export const PATCH = withApiHandler(async (req: NextRequest) => {
       status: true,
       fulfillmentType: true,
       orderNumber: true,
+      trackingSlug: true,
       customerId: true,
       customerName: true,
       customerPhone: true,
@@ -86,6 +87,7 @@ export const PATCH = withApiHandler(async (req: NextRequest) => {
           {
             id: order.id,
             orderNumber: order.orderNumber,
+            trackingSlug: order.trackingSlug,
             fulfillmentType: fulfillment,
             customerId: order.customerId,
             customerName: order.customerName,

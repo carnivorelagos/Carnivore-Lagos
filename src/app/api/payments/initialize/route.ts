@@ -4,39 +4,45 @@ import { ok, withApiHandler } from "@/lib/api-response";
 import { paymentsInitializeSchema } from "@/lib/validation";
 import { armPaymentForOrder } from "@/lib/payments";
 import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
-import { requireCustomer } from "@/lib/auth/requireCustomer";
+import { assertSameOrigin } from "@/lib/auth/csrf";
+import { getDeviceProfile } from "@/lib/auth/deviceProfile";
 import { AppError, ErrorCode, notFound } from "@/lib/errors";
 
 /**
- * Under accounts-only checkout, every order belongs to an authenticated
- * customer, so this now checks two things a fully anonymous version
- * couldn't: that the order actually belongs to whoever is calling
- * (Section: accounts-only), and that their account email is verified
- * (Section: "email gate is at the money step, not the door") — the
- * account's own verified email is what's sent to Paystack, never the
- * per-order customerEmail snapshot, since that field stays editable for
- * delivery-contact purposes and isn't guaranteed to be a real, owned
- * inbox.
+ * Arm a Paystack popup payment for an order under no-login checkout.
+ * Ownership is the `device_token` cookie — the order must belong to the
+ * device asking to pay for it. The email handed to Paystack is the order's
+ * own `customerEmail` snapshot (collected at checkout), falling back to
+ * the device's verified contact email; there is no account-email-verified
+ * gate any more (amendment 4). An order with no email at all can't be paid
+ * online until one is added.
  */
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const session = await requireCustomer(req);
+  assertSameOrigin(req);
   const { orderId } = paymentsInitializeSchema.parse(await req.json());
 
   await enforceRateLimit({ key: `payment_init:${orderId}`, max: 10 });
   await enforceRateLimit({ key: `payment_init:${clientIp(req)}`, max: 20 });
 
-  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { customerId: true } });
-  if (!order || order.customerId !== session.customerId) {
+  const device = await getDeviceProfile(req);
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { deviceProfileId: true, customerEmail: true },
+  });
+  if (!order || !device || order.deviceProfileId !== device.id) {
     // Same not-found response either way — never confirms another
-    // customer's order id is valid.
+    // device's order id is valid.
     throw notFound("Order");
   }
 
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { id: session.customerId } });
-  if (!customer.emailVerifiedAt || !customer.email) {
-    throw new AppError(ErrorCode.EMAIL_NOT_VERIFIED, "Verify your email before paying online.");
+  const email = order.customerEmail ?? device.verifiedContactEmail;
+  if (!email) {
+    throw new AppError(
+      ErrorCode.VALIDATION_ERROR,
+      "Add an email to this order before paying online.",
+    );
   }
 
-  const result = await armPaymentForOrder({ orderId, customerEmail: customer.email });
+  const result = await armPaymentForOrder({ orderId, customerEmail: email });
   return ok({ reference: result.reference, accessCode: result.accessCode });
 });

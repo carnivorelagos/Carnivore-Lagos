@@ -48,17 +48,19 @@ function AdminLoginForm() {
     <div className="grid min-h-[100dvh] place-items-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6">
-          <p className="font-display text-lg font-medium text-[var(--color-text)]">
-            Carnivore Lagos
+          <p className="flex items-center gap-1.5 font-display text-xl uppercase leading-none tracking-[0.01em] text-[var(--color-text)]">
+            Carnivore
+            <span aria-hidden className="inline-block size-1.5 bg-[var(--color-accent)]" />
+            Lagos
           </p>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-subtle)]">
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-subtle)]">
             Admin sign in
           </p>
         </div>
 
         <form
           onSubmit={submit}
-          className="space-y-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-raise)]"
+          className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)] p-6 shadow-[var(--shadow-raise)]"
         >
           <TextField
             label="Email"

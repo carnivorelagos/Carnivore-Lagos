@@ -34,7 +34,7 @@ export function StoreFooter() {
               </Link>
             </li>
             <li>
-              <Link href="/account/orders" className="hover:text-[var(--color-text)]">
+              <Link href="/history" className="hover:text-[var(--color-text)]">
                 Order history
               </Link>
             </li>

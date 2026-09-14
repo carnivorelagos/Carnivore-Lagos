@@ -55,6 +55,8 @@ describe("applyPaystackOutcome (DB-level)", () => {
       reference,
       amountKobo: 5000,
       currency: "NGN",
+      customerEmail: null,
+      authorization: null,
       raw: {},
     });
     expect(result).toEqual({ found: true, orderStatus: "PAID", paymentStatus: "SUCCESS", amountMismatch: false });
@@ -67,6 +69,8 @@ describe("applyPaystackOutcome (DB-level)", () => {
       reference,
       amountKobo: 5000,
       currency: "NGN",
+      customerEmail: null,
+      authorization: null,
       raw: {},
     });
     const after = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
@@ -82,6 +86,8 @@ describe("applyPaystackOutcome (DB-level)", () => {
       reference: "does-not-exist-anywhere",
       amountKobo: 5000,
       currency: "NGN",
+      customerEmail: null,
+      authorization: null,
       raw: {},
     });
     expect(result).toEqual({ found: false });
@@ -104,7 +110,7 @@ describe("applyPaystackOutcome (DB-level)", () => {
       data: { orderId: order2.id, reference: ref2, status: "PENDING", amountKobo: 2000, currency: "NGN" },
     });
 
-    const result = await applyPaystackOutcome({ outcome: "failed", reference: ref2, amountKobo: 2000, currency: "NGN", raw: {} });
+    const result = await applyPaystackOutcome({ outcome: "failed", reference: ref2, amountKobo: 2000, currency: "NGN", customerEmail: null, authorization: null, raw: {} });
     expect(result).toEqual({ found: true, orderStatus: "PENDING_PAYMENT", paymentStatus: "FAILED", amountMismatch: false });
 
     await prisma.payment.deleteMany({ where: { orderId: order2.id } });
@@ -128,7 +134,7 @@ describe("applyPaystackOutcome (DB-level)", () => {
       data: { orderId: order3.id, reference: ref3, status: "PENDING", amountKobo: 9000, currency: "NGN" },
     });
 
-    const result = await applyPaystackOutcome({ outcome: "success", reference: ref3, amountKobo: 1, currency: "NGN", raw: {} });
+    const result = await applyPaystackOutcome({ outcome: "success", reference: ref3, amountKobo: 1, currency: "NGN", customerEmail: null, authorization: null, raw: {} });
     if (!result.found) throw new Error("expected found: true");
     expect(result.amountMismatch).toBe(true);
     expect(result.orderStatus).toBe("PENDING_PAYMENT");

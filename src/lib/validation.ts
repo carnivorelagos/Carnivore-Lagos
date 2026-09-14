@@ -6,7 +6,13 @@ import { z } from "zod";
  * business logic (Section 26). Frontend validation is UX only.
  */
 
-export const uuidSchema = z.uuid();
+// UUID-*shape* check, not RFC-version-strict. Zod 4's `z.uuid()` enforces
+// the version nibble (1-8), which rejects perfectly valid opaque ids we
+// use elsewhere — e.g. the seed's fixed product ids
+// (`00000000-0000-0000-0000-0000000001xx`). Every id we validate here is
+// one we generated and look up by exact match; the shape is all that
+// matters. `z.guid()` is that looser check.
+export const uuidSchema = z.guid();
 
 /**
  * Nigerian phone numbers, accommodated without being unnecessarily
@@ -198,4 +204,20 @@ export const emailVerificationRequestSchema = z.object({
 
 export const emailVerificationConfirmSchema = z.object({
   code: otpCodeSchema,
+});
+
+// --- Device history / no-login (amendments 2-4) -----------------------
+
+/** An order tracking slug (cuid ~24 chars) or device token (base64url). */
+export const trackingSlugSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{16,64}$/, "Invalid order reference.");
+
+export const reorderSchema = z.object({ trackingSlug: trackingSlugSchema });
+
+export const chargeSavedCardSchema = z.object({ trackingSlug: trackingSlugSchema });
+
+export const secureHistorySchema = z.object({
+  email: z.email().max(200),
 });

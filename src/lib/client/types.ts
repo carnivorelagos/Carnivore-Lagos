@@ -137,6 +137,7 @@ export type OrderItemLine = {
 export type CreatedOrder = {
   id: string;
   orderNumber: string;
+  trackingSlug: string;
   status: OrderStatus;
   fulfillmentType: FulfillmentType;
   subtotalKobo: number;
@@ -157,13 +158,17 @@ export type PaymentVerifyResult = {
   amountMismatch: boolean;
 };
 
-// --- Public order lookup (order/[orderNumber]?ref=) --------------------
+// --- Public order tracking (order/[slug]) — slug is the capability -----
 
 export type PublicOrder = {
   id: string;
   orderNumber: string;
+  trackingSlug: string;
   status: OrderStatus;
   fulfillmentType: FulfillmentType;
+  customerName: string;
+  deliveryAddress: string | null;
+  notes: string | null;
   subtotalKobo: number;
   deliveryFeeKobo: number;
   totalKobo: number;
@@ -174,8 +179,43 @@ export type PublicOrder = {
     quantity: number;
     lineTotalKobo: number;
   }[];
-  payment: { reference: string; status: PaymentStatus; paidAt: string | null };
+  payment: { status: PaymentStatus; paidAt: string | null } | null;
+  /** True when the request came from the device that placed this order. */
+  ownedByThisDevice: boolean;
+  /** True when this device can pay the still-unpaid order with a saved card. */
+  canPayWithSavedCard: boolean;
+  savedCardLabel: string | null;
 };
+
+// --- Device history / no-login (amendments 2-4) -----------------------
+
+export type HistoryOrder = {
+  trackingSlug: string;
+  orderNumber: string;
+  status: OrderStatus;
+  fulfillmentType: FulfillmentType;
+  totalKobo: number;
+  createdAt: string;
+  items: { productNameSnapshot: string; quantity: number }[];
+};
+
+export type DeviceHistory = {
+  orders: HistoryOrder[];
+  savedCard: { brand: string | null; last4: string | null } | null;
+  secured: boolean;
+  securedEmail: string | null;
+};
+
+export type ReorderLine = {
+  productId: string | null;
+  name: string;
+  quantity: number;
+  priceKobo: number | null;
+  imageUrl: string | null;
+  available: boolean;
+};
+
+export type ReorderResult = { lines: ReorderLine[] };
 
 // --- Customer account ---------------------------------------------
 

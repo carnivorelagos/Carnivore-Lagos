@@ -105,6 +105,7 @@ export function notificationTypeForStatus(status: string): NotificationType | nu
 export type NotifiableOrder = {
   id: string;
   orderNumber: string;
+  trackingSlug: string;
   fulfillmentType: "PICKUP" | "DELIVERY";
   customerId: string | null;
   customerName: string;
@@ -112,9 +113,15 @@ export type NotifiableOrder = {
   customerEmail: string | null;
 };
 
-function orderUrl(orderNumber: string): string | undefined {
+/** Absolute tracking URL — keyed on the unguessable slug (amendment 1). */
+function orderUrl(trackingSlug: string): string | undefined {
   const base = process.env.NEXT_PUBLIC_APP_URL;
-  return base ? `${base.replace(/\/$/, "")}/account/orders/${encodeURIComponent(orderNumber)}` : undefined;
+  return base ? `${base.replace(/\/$/, "")}/order/${encodeURIComponent(trackingSlug)}` : undefined;
+}
+
+/** Relative tracking path for in-app / push deep links. */
+function orderPath(trackingSlug: string): string {
+  return `/order/${encodeURIComponent(trackingSlug)}`;
 }
 
 /**
@@ -126,7 +133,7 @@ export async function notifyOrderTransition(order: NotifiableOrder, type: Notifi
   const copy = COPY[type];
   const isDelivery = order.fulfillmentType === "DELIVERY";
   const body = copy.body(isDelivery);
-  const url = orderUrl(order.orderNumber);
+  const url = orderUrl(order.trackingSlug);
 
   // 1. Durable in-app row (registered customers only — the table requires
   //    a customerId). Idempotent via the unique (orderId, type) index.
@@ -180,7 +187,7 @@ export async function notifyOrderTransition(order: NotifiableOrder, type: Notifi
       sendWebPushToCustomer(order.customerId, {
         title: copy.title,
         body,
-        url: url ? `/account/orders/${encodeURIComponent(order.orderNumber)}` : undefined,
+        url: orderPath(order.trackingSlug),
         tag: `order-${order.orderNumber}`,
       }).catch((err) =>
         logger.error("notification_push_failed", { orderId: order.id, type, message: String(err) }),

@@ -5,7 +5,7 @@ import {
   Motorcycle,
   Storefront,
 } from "@phosphor-icons/react/dist/ssr";
-import { buttonVariants } from "@/components/ui/Button";
+import { buttonVariants } from "@/components/ui/buttonVariants";
 import { FeaturedGrill } from "@/components/store/FeaturedGrill";
 import { BRAND, PLACEHOLDER_IMAGES } from "@/lib/client/brand";
 
@@ -51,29 +51,30 @@ export default function HomePage() {
         />
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,13,0.72)_0%,rgba(21,16,13,0.86)_55%,var(--color-bg)_100%)]"
+          className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-bg)_68%,transparent)_0%,color-mix(in_oklab,var(--color-bg)_84%,transparent)_52%,var(--color-bg)_100%)]"
         />
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[radial-gradient(120%_90%_at_15%_0%,rgba(214,73,31,0.28)_0%,transparent_55%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(120%_90%_at_12%_0%,color-mix(in_oklab,var(--color-accent)_26%,transparent)_0%,transparent_55%)]"
         />
 
         <div className="shell gutter flex min-h-[calc(100dvh-3.5rem)] flex-col justify-end pb-16 pt-20 sm:min-h-[calc(100dvh-4rem)] sm:pb-24">
-          <p className="mb-4 text-[13px] font-medium uppercase tracking-[0.22em] text-[var(--color-gold)]">
+          <p className="eyebrow mb-5 flex items-center gap-3 text-[var(--color-bone)]">
+            <span aria-hidden className="h-px w-8 bg-[var(--color-accent)]" />
             {BRAND.tagline}
           </p>
-          <h1 className="max-w-[15ch] font-display text-[2.75rem] font-medium leading-[1.02] tracking-[-0.02em] text-[var(--color-text)] sm:text-6xl lg:text-7xl">
-            Smoke, pepper and <span className="italic text-[var(--color-accent)]">fire</span>.
+          <h1 className="display max-w-[16ch] text-[3rem] text-[var(--color-text)] sm:text-7xl lg:text-[5.5rem]">
+            Smoke, pepper <br className="hidden sm:block" />and <span className="text-[var(--color-accent)]">fire</span>
           </h1>
-          <p className="mt-5 max-w-md text-[15px] leading-relaxed text-[var(--color-muted)] sm:text-base">
+          <p className="mt-6 max-w-md text-[15px] leading-relaxed text-[var(--color-muted)] sm:text-base">
             Suya, grills and pepper soup, fired over open coals. Pickup or delivery across Lagos.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/menu" className={buttonVariants({ size: "lg", className: "px-7" })}>
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link href="/menu" className={buttonVariants({ size: "lg" })}>
               View menu
             </Link>
             <Link
-              href="/account/orders"
+              href="/history"
               className={buttonVariants({ variant: "secondary", size: "lg" })}
             >
               Track an order
@@ -88,10 +89,15 @@ export default function HomePage() {
       {/* Story: three plain rows, not cards ------------------------ */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)]">
         <div className="shell gutter grid divide-y divide-[var(--color-line)] py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-0">
-          {GRILL_STORY.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="flex flex-col gap-2 py-8 sm:px-8 sm:py-12">
-              <Icon className="size-6 text-[var(--color-accent)]" aria-hidden />
-              <h3 className="font-display text-lg text-[var(--color-text)]">{title}</h3>
+          {GRILL_STORY.map(({ icon: Icon, title, body }, i) => (
+            <div key={title} className="flex flex-col gap-3 py-8 sm:px-8 sm:py-14">
+              <div className="flex items-center gap-3">
+                <Icon className="size-5 text-[var(--color-accent)]" weight="fill" aria-hidden />
+                <span className="eyebrow text-[var(--color-subtle)]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+              </div>
+              <h3 className="text-[17px] text-[var(--color-text)]">{title}</h3>
               <p className="text-sm leading-relaxed text-[var(--color-muted)]">{body}</p>
             </div>
           ))}
@@ -99,8 +105,8 @@ export default function HomePage() {
       </section>
 
       {/* What we grill: editorial split -------------------------- */}
-      <section className="shell gutter grid gap-8 py-16 sm:grid-cols-2 sm:items-center sm:py-24">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-[var(--color-line)] sm:aspect-[4/5]">
+      <section className="shell gutter grid gap-10 py-16 sm:grid-cols-2 sm:items-center sm:py-24">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)]">
           <Image
             src={PLACEHOLDER_IMAGES.storyGrill.src}
             alt={PLACEHOLDER_IMAGES.storyGrill.alt}
@@ -108,20 +114,24 @@ export default function HomePage() {
             sizes="(max-width: 640px) 100vw, 45vw"
             className="object-cover"
           />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(160deg,transparent_45%,color-mix(in_oklab,var(--color-bg)_70%,transparent))]"
+          />
         </div>
         <div>
-          <h2 className="font-display text-3xl leading-tight sm:text-4xl">
-            One kitchen. The whole spread.
+          <h2 className="brand-rule text-3xl leading-[0.95] sm:text-[2.75rem]">
+            One kitchen.<br />The whole spread.
           </h2>
-          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--color-muted)]">
+          <p className="mt-6 max-w-md text-[15px] leading-relaxed text-[var(--color-muted)]">
             From half-chicken suya and giant prawn skewers to catfish pepper soup, native rice
             and fresh smoothies. Built for one plate or a platter for ten.
           </p>
-          <ul className="mt-6 flex flex-wrap gap-2">
+          <ul className="mt-7 flex flex-wrap gap-2">
             {WHAT_WE_GRILL.map((cat) => (
               <li
                 key={cat}
-                className="rounded-full border border-[var(--color-line-strong)] px-3 py-1.5 text-[13px] text-[var(--color-muted)]"
+                className="rounded-full border border-[var(--color-line-strong)] px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.05em] text-[var(--color-muted)]"
               >
                 {cat}
               </li>
@@ -129,7 +139,7 @@ export default function HomePage() {
           </ul>
           <Link
             href="/menu"
-            className={buttonVariants({ variant: "secondary", size: "md", className: "mt-7" })}
+            className={buttonVariants({ variant: "secondary", size: "md", className: "mt-8" })}
           >
             View menu
           </Link>
@@ -140,13 +150,13 @@ export default function HomePage() {
       <section className="relative isolate overflow-hidden border-t border-[var(--color-line)]">
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_80%_100%,rgba(214,73,31,0.22)_0%,transparent_60%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(90%_120%_at_80%_100%,color-mix(in_oklab,var(--color-accent)_20%,transparent)_0%,transparent_60%)]"
         />
-        <div className="shell gutter flex flex-col items-start gap-6 py-20 sm:items-center sm:py-28 sm:text-center">
-          <h2 className="max-w-[18ch] font-display text-3xl leading-tight sm:text-5xl">
+        <div className="shell gutter flex flex-col items-start gap-7 py-20 sm:items-center sm:py-28 sm:text-center">
+          <h2 className="display max-w-[16ch] text-[2rem] leading-[0.92] sm:text-[3.25rem]">
             Hungry now? The coals are already hot.
           </h2>
-          <Link href="/menu" className={buttonVariants({ size: "lg", className: "px-8" })}>
+          <Link href="/menu" className={buttonVariants({ size: "lg" })}>
             View menu
           </Link>
         </div>

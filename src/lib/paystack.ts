@@ -89,12 +89,46 @@ export type PaystackOutcome = "success" | "failed" | "pending";
 
 const DEFINITIVE_FAILURE_STATUSES = new Set(["failed", "abandoned", "reversed"]);
 
+/**
+ * The reusable-card details Paystack attaches to a successful card charge
+ * (amendment 3). `authorizationCode` is only reusable with the exact email
+ * it was created against, so callers persist that email alongside it.
+ */
+export type PaystackAuthorization = {
+  authorizationCode: string;
+  last4: string | null;
+  brand: string | null;
+  bank: string | null;
+  channel: string | null;
+  reusable: boolean;
+};
+
 export type VerifyResult = {
   outcome: PaystackOutcome;
   reference: string;
   amountKobo: number;
   currency: string;
+  customerEmail: string | null;
+  authorization: PaystackAuthorization | null;
   raw: unknown;
+};
+
+type PaystackTxnData = {
+  status?: string;
+  reference?: string;
+  amount?: number;
+  currency?: string;
+  channel?: string;
+  customer?: { email?: string };
+  authorization?: {
+    authorization_code?: string;
+    last4?: string;
+    card_type?: string;
+    brand?: string;
+    bank?: string;
+    channel?: string;
+    reusable?: boolean;
+  };
 };
 
 function classifyOutcome(status: string): PaystackOutcome {
@@ -103,18 +137,65 @@ function classifyOutcome(status: string): PaystackOutcome {
   return "pending";
 }
 
+function extractAuthorization(data: PaystackTxnData | undefined): PaystackAuthorization | null {
+  const a = data?.authorization;
+  if (!a?.authorization_code) return null;
+  return {
+    authorizationCode: a.authorization_code,
+    last4: a.last4 ?? null,
+    brand: a.card_type ?? a.brand ?? null,
+    bank: a.bank ?? null,
+    channel: a.channel ?? data?.channel ?? null,
+    reusable: a.reusable === true,
+  };
+}
+
+function toVerifyResult(data: PaystackTxnData | undefined, fallbackReference: string, raw: unknown): VerifyResult {
+  return {
+    outcome: classifyOutcome(data?.status ?? "unknown"),
+    reference: data?.reference ?? fallbackReference,
+    amountKobo: data?.amount ?? 0,
+    currency: data?.currency ?? "NGN",
+    customerEmail: data?.customer?.email ?? null,
+    authorization: extractAuthorization(data),
+    raw,
+  };
+}
+
 export async function verifyTransaction(reference: string): Promise<VerifyResult> {
   const body = (await paystackFetch(`/transaction/verify/${encodeURIComponent(reference)}`, {
     method: "GET",
-  })) as { data?: { status?: string; reference?: string; amount?: number; currency?: string } };
+  })) as { data?: PaystackTxnData };
 
-  return {
-    outcome: classifyOutcome(body.data?.status ?? "unknown"),
-    reference: body.data?.reference ?? reference,
-    amountKobo: body.data?.amount ?? 0,
-    currency: body.data?.currency ?? "NGN",
-    raw: body,
-  };
+  return toVerifyResult(body.data, reference, body);
+}
+
+/**
+ * Charge a previously-saved reusable card (amendment 3). Paystack returns
+ * a final status inline for most Nigerian cards; a non-terminal status
+ * falls through as `pending` and the verify/reconcile path settles it.
+ * The result is fed straight into applyPaystackOutcome, exactly like a
+ * verify — so a saved-card charge is server-verified the same way any
+ * other payment is (amendment 5).
+ */
+export async function chargeAuthorization(params: {
+  authorizationCode: string;
+  email: string;
+  amountKobo: number;
+  reference: string;
+}): Promise<VerifyResult> {
+  const body = (await paystackFetch("/transaction/charge_authorization", {
+    method: "POST",
+    body: JSON.stringify({
+      authorization_code: params.authorizationCode,
+      email: params.email,
+      amount: params.amountKobo,
+      reference: params.reference,
+      currency: "NGN",
+    }),
+  })) as { data?: PaystackTxnData };
+
+  return toVerifyResult(body.data, params.reference, body);
 }
 
 /**
@@ -132,18 +213,12 @@ export function parseWebhookEvent(rawBody: string): { event: string; verify: Ver
   } catch {
     return null;
   }
-  const body = parsed as { event?: string; data?: { status?: string; reference?: string; amount?: number; currency?: string } };
+  const body = parsed as { event?: string; data?: PaystackTxnData };
   if (!body.event || !body.data?.reference) return null;
 
   return {
     event: body.event,
-    verify: {
-      outcome: classifyOutcome(body.data.status ?? "unknown"),
-      reference: body.data.reference,
-      amountKobo: body.data.amount ?? 0,
-      currency: body.data.currency ?? "NGN",
-      raw: body,
-    },
+    verify: toVerifyResult(body.data, body.data.reference, body),
   };
 }
 

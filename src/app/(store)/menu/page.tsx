@@ -138,7 +138,7 @@ function MenuBrowser() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 animate-reveal sm:grid-cols-3 lg:grid-cols-4">
               {items.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -178,13 +178,18 @@ export default function MenuPage() {
         />
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,13,0.65),rgba(21,16,13,0.92))]"
+          className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-bg)_60%,transparent),color-mix(in_oklab,var(--color-bg)_92%,transparent))]"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 bg-[radial-gradient(100%_80%_at_85%_0%,color-mix(in_oklab,var(--color-accent)_18%,transparent),transparent_60%)]"
         />
         <div className="shell gutter py-12 sm:py-16">
-          <p className="text-[12px] font-medium uppercase tracking-[0.22em] text-[var(--color-gold)]">
+          <p className="eyebrow flex items-center gap-3 text-[var(--color-bone)]">
+            <span aria-hidden className="h-px w-8 bg-[var(--color-accent)]" />
             Order ahead
           </p>
-          <h2 className="mt-2 max-w-[16ch] font-display text-3xl leading-tight sm:text-5xl">
+          <h2 className="display mt-3 max-w-[16ch] text-[2rem] leading-[0.92] sm:text-[3.25rem]">
             Everything off the grill
           </h2>
         </div>

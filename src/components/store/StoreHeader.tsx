@@ -2,18 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingBag, UserCircle } from "@phosphor-icons/react";
+import { ClockCounterClockwise, ShoppingBag } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 import { useCart } from "@/components/providers/CartProvider";
-import { useAuth } from "@/components/providers/AuthProvider";
 import { useCartSheet } from "@/components/store/CartSheet";
-import { NotificationBell } from "@/components/store/NotificationBell";
 import { Wordmark } from "@/components/store/Wordmark";
 
 export function StoreHeader() {
   const pathname = usePathname();
   const { count, hydrated } = useCart();
-  const { customer } = useAuth();
   const cartSheet = useCartSheet();
 
   const navLink = (href: string, label: string) => {
@@ -21,11 +18,13 @@ export function StoreHeader() {
     return (
       <Link
         href={href}
+        aria-current={active ? "page" : undefined}
         className={cn(
-          "text-sm transition-colors",
+          "relative py-1 text-[13px] font-semibold uppercase tracking-[0.11em] transition-colors",
+          "after:absolute after:inset-x-0 after:-bottom-1 after:h-[2px] after:origin-left after:bg-[var(--color-accent)] after:transition-transform after:duration-200 after:ease-[var(--ease-out-quint)]",
           active
-            ? "text-[var(--color-text)]"
-            : "text-[var(--color-muted)] hover:text-[var(--color-text)]",
+            ? "text-[var(--color-text)] after:scale-x-100"
+            : "text-[var(--color-muted)] after:scale-x-0 hover:text-[var(--color-text)] hover:after:scale-x-100",
         )}
       >
         {label}
@@ -34,25 +33,23 @@ export function StoreHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_86%,transparent)] backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_82%,transparent)] backdrop-blur-md">
       <div className="shell gutter flex h-14 items-center justify-between gap-4 sm:h-16">
-        <div className="flex items-center gap-7">
+        <div className="flex items-center gap-8">
           <Wordmark size="md" />
-          <nav className="hidden items-center gap-6 sm:flex">
+          <nav className="hidden items-center gap-7 sm:flex">
             {navLink("/menu", "Menu")}
-            {navLink("/account/orders", "Orders")}
+            {navLink("/history", "Orders")}
           </nav>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <NotificationBell />
-
           <Link
-            href={customer ? "/account" : "/login"}
-            aria-label={customer ? "Your account" : "Sign in"}
+            href="/history"
+            aria-label="Your orders"
             className="hidden size-10 items-center justify-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)] hover:text-[var(--color-text)] sm:inline-flex"
           >
-            <UserCircle className="size-[22px]" />
+            <ClockCounterClockwise className="size-[22px]" />
           </Link>
 
           <button

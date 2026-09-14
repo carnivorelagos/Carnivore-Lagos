@@ -15,30 +15,22 @@ Every response is `{ "success": true, "data": ... }` or `{ "success": false, "er
 | `/api/menu/index` | GET | Full active + available menu (id, name, description, price, image, categoryId, tags) in one payload for the client-side smart search. Cached + CDN-cacheable. |
 | `/api/search/assist` | POST | `{query}`. AI concierge — Layer 4 of search, called only after deterministic matching fails. Returns `{available:false}` when `ANTHROPIC_API_KEY` is unset. Rate-limited per IP; identical queries cached ~1h (busted on menu edits). Every returned product id is re-validated against the DB. |
 | `/api/checkout/quote` | POST | Preview only, creates nothing. Runs the same fulfillment/range/floor sequence as order creation. |
-| `/api/orders` | POST | Requires a signed-in customer (`customer_session` cookie) — checkout is accounts-only, browsing stays public. Rate-limited by IP. Idempotent on `idempotencyKey`; reusing another customer's key is rejected rather than returning their order. |
-| `/api/orders/[orderNumber]` | GET | Requires `?ref=` (the Payment reference) as a second factor. |
-| `/api/payments/initialize` | POST | `{orderId}`. Requires the signed-in customer to own the order and their account email to be verified (`EMAIL_NOT_VERIFIED`, 403, otherwise). Sends Paystack the account's own verified email, never the order's editable `customerEmail` snapshot. Rate-limited by order and by IP. See `src/lib/payments.ts` for the arm/re-arm decision table. |
+| `/api/orders` | POST | No login. Ownership is a per-device profile — the `device_token` httpOnly cookie, minted + set on the response the first time a device checks out. Same-origin enforced. Rate-limited by IP. Idempotent on `idempotencyKey`; a key already used by a different device is rejected. `customerEmail` is optional but is what a later online payment / saved-card reuse is keyed to. Returns `trackingSlug`. |
+| `/api/orders/[slug]` | GET | Public order tracking by unguessable `trackingSlug` — the slug **is** the capability, no `?ref=`. `orderNumber` is a display label, never a lookup key. If the request carries the placing device's cookie and that device has a reusable saved card, the response includes `canPayWithSavedCard` + `savedCardLabel`. |
+| `/api/history` | GET | This device's order history + one-tap-reorder feed, keyed on `device_token`. Also reports `savedCard` and whether the history is `secured` to a verified email. Unrecognised device → empty payload. |
+| `/api/history/reorder` | POST | `{trackingSlug}` for one of this device's past orders → its lines re-priced against the current menu (gone/unavailable items flagged). Same-origin enforced. |
+| `/api/history/secure` | POST | `{email}` → sends a passwordless email magic link ("secure your order history"). Mints a device profile if needed (so recovery works from a fresh device). Rate-limited per profile and IP. Never gates anything. |
+| `/api/history/secure/confirm` | GET | Magic-link click target. Consumes the token, sets `verifiedContactEmail` on the opening device's profile, merges any other profile carrying that email (orders + saved card move over), redirects to `/history?secured=1` (or `=failed`). Not a JSON endpoint. |
+| `/api/payments/initialize` | POST | `{orderId}`. The device (via `device_token`) must own the order. Email sent to Paystack is the order's `customerEmail` snapshot, falling back to the device's `verifiedContactEmail`; an order with no email at all can't pay online (`VALIDATION_ERROR`). No account-email-verified gate. Rate-limited by order and IP. See `src/lib/payments.ts` for the arm/re-arm decision table. |
+| `/api/payments/charge-authorization` | POST | `{trackingSlug}`. "Pay with your last card" — charges the device's stored reusable Paystack authorization for a still-unpaid order it owns, no popup. Runs through `applyPaystackOutcome` exactly like a verify, so it's server-confirmed. Card only. |
 | `/api/payments/verify` | GET | `?reference=`. Server-authoritative — never trusts the frontend popup callback alone. |
-| `/api/paystack/webhook` | POST | Signature-verified (`x-paystack-signature`, HMAC-SHA512). Idempotent per reference; unknown/superseded reference is a safe 200, not an error. On the successful-payment transition, also sends a receipt email to the order's `customerEmail` (awaited, logged-and-swallowed on failure — never turns a successful payment into an API error). |
+| `/api/paystack/webhook` | POST | Signature-verified (`x-paystack-signature`, HMAC-SHA512). Idempotent per reference; unknown/superseded reference is a safe 200, not an error. On the successful-payment transition, also sends a receipt email to the order's `customerEmail` (awaited, logged-and-swallowed on failure) and, for a reusable card charge, stores the Paystack `authorization_code` + its email on the placing device's profile. |
 
-## Customer Accounts — phone-OTP signup/login; `/api/me/*` requires the `customer_session` cookie
+## Device identity (no-login checkout)
 
-Accounts-only checkout: an order cannot be created without a signed-in customer. Signup and login are the same flow — one endpoint, the backend decides new-vs-returning and never reveals whether a phone number is already registered. Email is collected and verified once, at signup, and gates only the payment step (`POST /api/payments/initialize`), never login or browsing. See `docs/customer-accounts-addendum.html` for the full flow rationale.
+Checkout needs no account. A `DeviceProfile` (opaque `device_token` httpOnly cookie, 400-day TTL) owns a device's orders, an optional reusable Paystack card authorization, and an optional `verifiedContactEmail`. Confirming that email via the magic link makes the history + saved card recoverable on any other device by re-verifying the same address. Order-status updates reach device customers by SMS + email (from the order's contact snapshot); the in-app notification centre and Web Push remain account-only and are currently dormant.
 
-| Route | Method | Notes |
-|---|---|---|
-| `/api/auth/otp/request` | POST | `{phone}`. Texts a 6-digit code either way (signup or login). Rate-limited by phone (5/window) and IP (15/window) — abuse here has a direct SMS cost. |
-| `/api/auth/otp/verify` | POST | `{phone, code}`. Creates the `Customer` on first-ever verification for that phone, otherwise logs in. Sets the `customer_session` cookie (30-day TTL). Rate-limited by IP. |
-| `/api/auth/customer/logout` | POST | Clears the `customer_session` cookie. |
-| `/api/auth/email/request` | POST | Requires `customer_session`. `{email, name?}`. Saves the email (unverified) and optional display name, sends a verification code. Rate-limited per customer. |
-| `/api/auth/email/confirm` | POST | Requires `customer_session`. `{code}`. Sets `Customer.emailVerifiedAt` on success. |
-| `/api/me` | GET | Requires `customer_session`. Current customer profile. |
-| `/api/me/orders` | GET | Requires `customer_session`. Paginated order history for the signed-in customer only, `?page=&limit=`. |
-| `/api/me/orders/[orderNumber]` | GET | Requires `customer_session`. Full order detail — 404 (not 403) whether the order doesn't exist or simply isn't this customer's. |
-| `/api/me` | GET, PATCH | `GET` current profile. `PATCH {orderUpdatesOptOut?}` — opt in/out of SMS + email order updates (in-app + push unaffected). |
-| `/api/me/notifications` | GET, PATCH | `GET` paginated in-app notifications + `unreadCount` (`?unread=1` for unread only). `PATCH` marks all read. |
-| `/api/me/notifications/[id]` | PATCH | Mark one notification read. 404 if not this customer's. |
-| `/api/me/push/subscribe` | POST, DELETE | Register / remove a Web Push subscription (`{subscription}` / `{endpoint}`). No-op server-side when VAPID isn't configured. |
+The phone-OTP account routes (`/api/auth/otp/*`, `/api/auth/email/*`, `/api/auth/customer/logout`, `/api/me/*`) and the `PhoneOtp` / `EmailVerificationCode` models still exist but nothing in the storefront reaches them — slated for removal.
 
 ## Admin — every route below requires a valid session cookie; state-changing routes also check the request Origin
 

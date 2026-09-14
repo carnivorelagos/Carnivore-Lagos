@@ -9,13 +9,15 @@ import { computeCheckout } from "@/lib/checkout";
 import { getServiceArea } from "@/lib/serviceArea";
 import { generateOrderNumber } from "@/lib/orderNumber";
 import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
-import { requireCustomer } from "@/lib/auth/requireCustomer";
+import { assertSameOrigin } from "@/lib/auth/csrf";
+import { getOrCreateDeviceProfile, attachDeviceTokenCookie } from "@/lib/auth/deviceProfile";
 import { validationError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 const ORDER_SELECT = {
   id: true,
   orderNumber: true,
+  trackingSlug: true,
   status: true,
   fulfillmentType: true,
   subtotalKobo: true,
@@ -37,43 +39,41 @@ const ORDER_SELECT = {
 const MAX_ORDER_NUMBER_ATTEMPTS = 5;
 
 /**
- * Idempotency strategy (Section 13): the client generates `idempotencyKey`
- * once per checkout attempt and resends it on every retry (see the
- * architecture doc's "Checkout state persistence" section for how the
- * client holds onto it across a refresh). We check for an existing order
- * with that key first — cheap, avoids a wasted DB write on the common
- * "double click" case — and additionally rely on the column's `@unique`
- * constraint to resolve the rarer true-concurrent race, where two
- * requests both miss that initial check and try to insert at the same
- * instant: the loser's insert fails with Prisma error P2002, and rather
- * than surfacing that as an error we re-read and return the winner's row,
- * so the client only ever sees one order either way.
+ * No-login checkout (amendment 2). Ownership is a per-device profile, not
+ * an account: the `device_token` httpOnly cookie identifies the device,
+ * and one is minted + set on the response the first time this device
+ * checks out. Same-origin is still enforced (Route Handlers get no CSRF
+ * for free).
+ *
+ * Idempotency (Section 13): the client generates `idempotencyKey` once per
+ * checkout attempt and resends it on retries. We check for an existing
+ * order with that key first, and additionally rely on the column's
+ * `@unique` constraint for the true-concurrent race — the loser re-reads
+ * and returns the winner's row, so the client only ever sees one order.
  */
 export const POST = withApiHandler(async (req: NextRequest) => {
-  const session = await requireCustomer(req);
+  assertSameOrigin(req);
   await enforceRateLimit({ key: `order_create:${clientIp(req)}`, max: 10 });
 
   const body = createOrderSchema.parse(await req.json());
+  const { profile: device, newToken } = await getOrCreateDeviceProfile(req);
 
   const existing = await prisma.order.findUnique({
     where: { idempotencyKey: body.idempotencyKey },
-    select: { ...ORDER_SELECT, customerId: true },
+    select: { ...ORDER_SELECT, deviceProfileId: true },
   });
   if (existing) {
-    if (existing.customerId !== session.customerId) {
+    if (existing.deviceProfileId !== device.id) {
       // idempotencyKey is a fresh client-generated UUID per checkout
-      // attempt — a collision with another customer's key is never
-      // legitimate reuse, so this never returns someone else's order.
+      // attempt — a collision with another device's key is never
+      // legitimate reuse, so this never returns another device's order.
       throw validationError("This idempotency key is already in use.");
     }
-    return ok(existing, 200);
+    const { deviceProfileId: _drop, ...safe } = existing;
+    const res = ok(safe, 200);
+    if (newToken) attachDeviceTokenCookie(res, newToken);
+    return res;
   }
-
-  // Backstops customerEmail from the verified account profile when the
-  // client didn't resend it — guarantees payments/initialize and the
-  // post-payment receipt always have somewhere to go under accounts-only
-  // checkout, without requiring every client call to repeat it.
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { id: session.customerId } });
 
   // Fresh, not the cached storefront copy: the order total (incl. delivery
   // fee) is money the customer is about to be charged, so it must reflect
@@ -91,20 +91,19 @@ export const POST = withApiHandler(async (req: NextRequest) => {
     const orderNumber = generateOrderNumber();
     try {
       // A single nested `create` is already atomic (Prisma writes the
-      // Order and its OrderItems in one implicit transaction). The
-      // previous explicit interactive `$transaction` around this one
-      // statement bought nothing and, over the Neon serverless driver,
-      // held a real connection open for its duration — avoidable pool
-      // pressure on the checkout hot path.
+      // Order and its OrderItems in one implicit transaction).
       const order = await prisma.order.create({
         data: {
           orderNumber,
           idempotencyKey: body.idempotencyKey,
           fulfillmentType: body.fulfillmentType,
-          customerId: session.customerId,
+          deviceProfileId: device.id,
           customerName: body.customerName,
           customerPhone: body.customerPhone,
-          customerEmail: body.customerEmail ?? customer.email ?? undefined,
+          // Email at checkout is optional but is what a later online
+          // payment (and saved-card reuse) is keyed to — backstopped from
+          // the device's verified contact email when the form omitted it.
+          customerEmail: body.customerEmail ?? device.verifiedContactEmail ?? undefined,
           deliveryAddress: body.deliveryAddress,
           deliveryLat: body.deliveryPin?.lat,
           deliveryLng: body.deliveryPin?.lng,
@@ -127,24 +126,26 @@ export const POST = withApiHandler(async (req: NextRequest) => {
       });
 
       logger.info("order_created", { orderNumber: order.orderNumber, totalKobo: order.totalKobo });
-      return ok(order, 201);
+      const res = ok(order, 201);
+      if (newToken) attachDeviceTokenCookie(res, newToken);
+      return res;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         const target = (err.meta?.target as string[] | undefined) ?? [];
         if (target.includes("idempotencyKey")) {
-          // Lost the race to a concurrent identical request — return its
-          // row. In practice this only fires on a same-customer double
-          // submit (idempotencyKey is a fresh UUID per checkout attempt),
-          // but the ownership check stays for the same reason as above.
           const winner = await prisma.order.findUnique({
             where: { idempotencyKey: body.idempotencyKey },
-            select: { ...ORDER_SELECT, customerId: true },
+            select: { ...ORDER_SELECT, deviceProfileId: true },
           });
-          if (winner && winner.customerId === session.customerId) return ok(winner, 200);
+          if (winner && winner.deviceProfileId === device.id) {
+            const { deviceProfileId: _drop, ...safe } = winner;
+            const res = ok(safe, 200);
+            if (newToken) attachDeviceTokenCookie(res, newToken);
+            return res;
+          }
         }
         if (target.includes("orderNumber")) {
-          // Astronomically unlikely order-number collision — retry with a
-          // freshly generated number instead of failing the request.
+          // Astronomically unlikely order-number collision — retry.
           continue;
         }
       }

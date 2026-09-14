@@ -2,18 +2,26 @@ import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import { AppError, ErrorCode } from "./errors";
-import { initializeTransaction, verifyTransaction, type VerifyResult } from "./paystack";
+import {
+  initializeTransaction,
+  verifyTransaction,
+  chargeAuthorization,
+  type VerifyResult,
+} from "./paystack";
 import { sendReceiptEmail } from "./email";
 import { recordPaymentIssue, autoResolvePaymentIssue } from "./paymentIssues";
 import { notifyOrderTransition } from "./notifications";
+import { alertAdminsPaidOrder } from "./adminAlerts";
 import { getSettingsFresh } from "./settings";
 import { logger } from "./logger";
 
 type PaidOrderShape = {
   id: string;
   orderNumber: string;
+  trackingSlug: string;
   fulfillmentType: string;
   customerId: string | null;
+  deviceProfileId: string | null;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
@@ -23,12 +31,46 @@ function notifiable(order: PaidOrderShape) {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    trackingSlug: order.trackingSlug,
     fulfillmentType: order.fulfillmentType as "PICKUP" | "DELIVERY",
     customerId: order.customerId,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     customerEmail: order.customerEmail,
   };
+}
+
+/**
+ * On a successful *card* charge, persist the reusable Paystack
+ * authorization against the device that placed the order (amendment 3),
+ * so a future order can offer "pay with your last card". Card only —
+ * bank transfer / USSD authorizations aren't reusable. Best-effort: a
+ * failure here never fails the payment.
+ */
+async function captureReusableCard(order: PaidOrderShape, verify: VerifyResult): Promise<void> {
+  const auth = verify.authorization;
+  if (!order.deviceProfileId || !auth?.reusable || auth.channel === "bank_transfer" || auth.channel === "ussd") {
+    return;
+  }
+  const email = verify.customerEmail ?? order.customerEmail;
+  if (!email) return;
+  try {
+    await prisma.deviceProfile.update({
+      where: { id: order.deviceProfileId },
+      data: {
+        paystackAuthorizationCode: auth.authorizationCode,
+        paystackAuthEmail: email,
+        paystackCardLast4: auth.last4,
+        paystackCardBrand: auth.brand,
+      },
+    });
+    logger.info("saved_card_captured", { deviceProfileId: order.deviceProfileId, last4: auth.last4 });
+  } catch (err) {
+    logger.error("saved_card_capture_failed", {
+      orderId: order.id,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /** Fire the "payment confirmed" notification for a freshly-paid order. */
@@ -261,7 +303,9 @@ export async function applyPaystackOutcome(verify: VerifyResult): Promise<ApplyO
           "Order advanced to PAID on a later verify/webhook/reconcile pass.",
         );
         logger.info("payment_order_healed", { reference: verify.reference, orderId: payment.orderId });
+        await captureReusableCard(payment.order, verify);
         await notifyPaid(payment.order);
+        await alertAdminsPaidOrder(payment.order);
         await maybeAutoConfirm(payment.order);
         return { found: true, orderStatus: "PAID", paymentStatus: "SUCCESS", amountMismatch: false };
       }
@@ -388,12 +432,80 @@ export async function applyPaystackOutcome(verify: VerifyResult): Promise<ApplyO
     logger.warn("receipt_email_skipped_no_email", { orderId: payment.orderId });
   }
 
+  // Persist the reusable card against the device, if this was a card
+  // charge and the device asked for it (amendment 3).
+  await captureReusableCard(payment.order, verify);
+
   // In-app + push "payment confirmed" (idempotent; the receipt email
   // above already covers the email channel for this transition).
   await notifyPaid(payment.order);
+  // Real-time kitchen alert (Web Push to opted-in admins).
+  await alertAdminsPaidOrder(payment.order);
   await maybeAutoConfirm(payment.order);
 
   return { found: true, orderStatus: "PAID", paymentStatus: "SUCCESS", amountMismatch: false };
+}
+
+/**
+ * Pay an existing PENDING_PAYMENT order with the device's saved card
+ * (amendment 3). Arms the order's single Payment row with a fresh
+ * reference, calls Paystack charge_authorization (no popup), then runs the
+ * result through applyPaystackOutcome — so the charge is server-verified
+ * exactly like every other payment (amendment 5). Card only; the caller is
+ * responsible for confirming a reusable authorization exists.
+ */
+export async function chargeOrderWithSavedCard(params: {
+  orderId: string;
+  authorizationCode: string;
+  authEmail: string;
+}): Promise<ApplyOutcomeResult> {
+  const order = await prisma.order.findUnique({
+    where: { id: params.orderId },
+    include: { payment: true },
+  });
+  if (!order) throw new AppError(ErrorCode.NOT_FOUND, "Order not found.");
+  if (order.status !== "PENDING_PAYMENT") {
+    if (order.status === "PAID") {
+      throw new AppError(ErrorCode.ORDER_ALREADY_PAID, "This order has already been paid for.");
+    }
+    throw new AppError(ErrorCode.ORDER_NOT_PAYABLE, "This order can no longer accept a payment.");
+  }
+  if (order.payment?.status === "SUCCESS") {
+    throw new AppError(ErrorCode.ORDER_ALREADY_PAID, "This order has already been paid for.");
+  }
+
+  const reference = `pay_${randomUUID()}`;
+
+  if (order.payment) {
+    const updated = await prisma.payment.updateMany({
+      where: { orderId: order.id, status: { not: "SUCCESS" } },
+      data: { reference, status: "PENDING", amountKobo: order.totalKobo },
+    });
+    if (updated.count === 0) {
+      throw new AppError(ErrorCode.ORDER_ALREADY_PAID, "This order has already been paid for.");
+    }
+  } else {
+    await prisma.payment.create({
+      data: { orderId: order.id, reference, status: "PENDING", amountKobo: order.totalKobo, currency: "NGN" },
+    });
+  }
+
+  let verify: VerifyResult;
+  try {
+    verify = await chargeAuthorization({
+      authorizationCode: params.authorizationCode,
+      email: params.authEmail,
+      amountKobo: order.totalKobo,
+      reference,
+    });
+  } catch (err) {
+    await prisma.payment
+      .updateMany({ where: { reference, status: "PENDING" }, data: { status: "FAILED" } })
+      .catch(() => undefined);
+    throw err;
+  }
+
+  return applyPaystackOutcome(verify);
 }
 
 export { verifyTransaction };

@@ -55,7 +55,9 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-line-strong)]",
+        "group relative flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-surface)]",
+        "transition-[transform,border-color,box-shadow] duration-200 ease-[var(--ease-out-quint)]",
+        "hover:-translate-y-0.5 hover:border-[var(--color-accent)] hover:shadow-[var(--shadow-raise)]",
         className,
       )}
     >

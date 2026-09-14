@@ -89,7 +89,7 @@ export default function ProductPage() {
       ) : status === "error" || !product ? (
         <ErrorState description={errorMessage(error)} onRetry={() => reload()} />
       ) : (
-        <>
+        <div className="animate-reveal">
           <div className="grid gap-8 sm:grid-cols-2 sm:gap-12">
             <div className="relative aspect-square overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)]">
               {product.imageUrl ? (
@@ -144,7 +144,7 @@ export default function ProductPage() {
               </div>
             </div>
           ) : null}
-        </>
+        </div>
       )}
     </div>
   );

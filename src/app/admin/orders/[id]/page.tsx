@@ -15,11 +15,12 @@ import type { OrderStatus } from "@/lib/client/types";
 import { useAdminData } from "@/components/admin/useAdminData";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader, Card } from "@/components/admin/primitives";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
 import { OrderLineItems } from "@/components/store/OrderLineItems";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Overlay";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui/feedback";
+import { EmptyState, ErrorState } from "@/components/ui/feedback";
 import { formatNaira } from "@/lib/client/format";
 
 function DefRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -92,11 +93,7 @@ export default function AdminOrderDetailPage() {
     );
   }
   if (status === "loading" || !order) {
-    return (
-      <div className="grid min-h-[40vh] place-items-center">
-        <Spinner />
-      </div>
-    );
+    return <AdminPageSkeleton rows={6} />;
   }
 
   const nextStatuses = allowedNextStatuses(order.status, order.fulfillmentType);

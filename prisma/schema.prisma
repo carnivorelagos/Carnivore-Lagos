@@ -97,7 +97,27 @@ model AdminUser {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  pushSubscriptions AdminPushSubscription[]
+
   @@index([email])
+}
+
+// One Web Push subscription per browser an admin has opted in on. Used to
+// deliver "new paid order" alerts in real time (src/lib/webPush.ts). Same
+// shape as the customer PushSubscription; kept a separate table so admin
+// and customer delivery never cross.
+model AdminPushSubscription {
+  id          String    @id @default(uuid())
+  adminUserId String
+  adminUser   AdminUser  @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  endpoint    String     @unique
+  p256dh      String
+  auth        String
+  userAgent   String?
+  createdAt   DateTime   @default(now())
+  lastUsedAt  DateTime   @default(now())
+
+  @@index([adminUserId])
 }
 
 // Singleton row — application code always reads/writes id = "default".
@@ -156,6 +176,61 @@ model Product {
 
   @@index([categoryId])
   @@index([isActive, isAvailable])
+}
+
+// ---------------------------------------------------------------------------
+// Device-based identity (no-login checkout)
+// ---------------------------------------------------------------------------
+
+// A per-device profile, the identity behind no-login checkout. Created on
+// first completed checkout and remembered via an httpOnly `device_token`
+// cookie. Holds everything that must outlive a single order: the device's
+// order history (Order.deviceProfileId), an optional Paystack reusable
+// card authorization, and an optionally-verified contact email that makes
+// the history recoverable on another device.
+model DeviceProfile {
+  id    String @id @default(uuid())
+  // Opaque random token (the cookie value). Rotating it would orphan the
+  // history, so it's stable for the life of the profile.
+  token String @unique
+
+  // Set by the "secure your order history" magic link (ContactVerification).
+  // When present, re-verifying the same address on a new device re-links
+  // that device to this profile's history + saved card.
+  verifiedContactEmail String?
+
+  // Paystack card reuse (card payments only). authorization_code is only
+  // reusable with the exact email it was created against, so both are
+  // stored. last4/brand are for the "pay with card ending 4081" label.
+  paystackAuthorizationCode String?
+  paystackAuthEmail         String?
+  paystackCardLast4         String?
+  paystackCardBrand         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders               Order[]
+  contactVerifications ContactVerification[]
+
+  @@index([verifiedContactEmail])
+}
+
+// Passwordless email magic link for the optional "secure your order
+// history" step. A link token, not a 6-digit code (deliberately unlike
+// EmailVerificationCode) — only its hash is stored; the raw token lives
+// only in the emailed URL.
+model ContactVerification {
+  id              String        @id @default(uuid())
+  tokenHash       String        @unique
+  deviceProfileId String
+  deviceProfile   DeviceProfile @relation(fields: [deviceProfileId], references: [id], onDelete: Cascade)
+  email           String
+  expiresAt       DateTime
+  consumedAt      DateTime?
+  createdAt       DateTime      @default(now())
+
+  @@index([deviceProfileId])
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +304,14 @@ model EmailVerificationCode {
 
 model Order {
   id             String          @id @default(uuid())
+  // Human-readable label only — printed on receipts, read aloud at the
+  // counter. NEVER a lookup key: tracking and history use `trackingSlug`.
   orderNumber    String          @unique
+  // Unguessable public identifier. Every tracking URL and every order
+  // lookup keys on this; possession of the slug is the capability to view
+  // the order (no second factor). Prisma-generated cuid — not enumerable,
+  // not derivable from orderNumber.
+  trackingSlug   String          @unique @default(cuid(2))
   idempotencyKey String          @unique
   status         OrderStatus     @default(PENDING_PAYMENT)
   fulfillmentType FulfillmentType
@@ -240,6 +322,12 @@ model Order {
   // fields below already make each order fully readable on its own).
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  // The device that placed this order under no-login checkout. Nullable +
+  // onDelete:SetNull for the same reason as customerId — the snapshot
+  // fields keep the order fully readable on its own.
+  deviceProfileId String?
+  deviceProfile   DeviceProfile? @relation(fields: [deviceProfileId], references: [id], onDelete: SetNull)
 
   // Per-order contact snapshot — pre-filled from the Customer profile at
   // checkout but stays editable per order (e.g. ordering for someone
@@ -269,6 +357,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([customerId])
+  @@index([deviceProfileId])
 }
 
 model OrderItem {

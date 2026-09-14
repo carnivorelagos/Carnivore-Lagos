@@ -11,10 +11,11 @@ import type { AdminCategory } from "@/lib/client/types";
 import { useAdminData } from "@/components/admin/useAdminData";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader, Card } from "@/components/admin/primitives";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Toggle } from "@/components/admin/Toggle";
 import { TextField } from "@/components/ui/form";
 import { Button } from "@/components/ui/Button";
-import { ErrorState, Spinner } from "@/components/ui/feedback";
+import { ErrorState } from "@/components/ui/feedback";
 
 function CategoryRow({
   category,
@@ -156,9 +157,7 @@ export default function AdminCategoriesPage() {
       />
 
       {status === "loading" ? (
-        <div className="grid min-h-[30vh] place-items-center">
-          <Spinner />
-        </div>
+        <AdminPageSkeleton header={false} rows={6} />
       ) : status === "error" ? (
         <ErrorState description={errorMessage(error)} onRetry={() => reload()} />
       ) : (

@@ -5,10 +5,20 @@ import { formatNaira } from "./money";
  * Email delivery, behind one interface — same pattern as sms.ts. Swapping
  * in a real provider (Resend, Postmark, SES, ...) is a one-file change:
  * implement EmailProvider, return it from getEmailProvider().
+ *
+ * Selection is driven by EMAIL_PROVIDER:
+ *   unset / anything else → ConsoleEmailProvider (dev only, hard-stops in prod)
+ *   "resend"              → ResendEmailProvider (needs RESEND_API_KEY, EMAIL_FROM)
  */
 export interface EmailProvider {
   send(params: { to: string; subject: string; html: string; text: string }): Promise<void>;
 }
+
+const APP_NAME = "Carnivore Lagos";
+// Sender identity. Set EMAIL_FROM to an address on a domain verified in
+// your email provider (Resend, etc). Falls back to a placeholder that
+// only works with the dev console provider.
+const FROM_LABEL = process.env.EMAIL_FROM?.trim() || `${APP_NAME} <no-reply@carnivorelagos.example>`;
 
 /**
  * Dev-only fallback — logs the email instead of sending it. Same
@@ -29,22 +39,91 @@ class ConsoleEmailProvider implements EmailProvider {
   }
 }
 
+/**
+ * Resend (https://resend.com) over its REST API — no SDK dependency, same
+ * reasoning as paystack.ts: a plain `fetch` wrapper has nothing native to
+ * bundle for Netlify Functions. Needs:
+ *   RESEND_API_KEY — from the Resend dashboard (starts "re_").
+ *   EMAIL_FROM     — a sender on a domain verified in that Resend account,
+ *                    e.g. "Carnivore Lagos <orders@carnivorelagos.com>".
+ *                    For testing before a domain is verified, Resend
+ *                    accepts "onboarding@resend.dev" (delivers only to the
+ *                    Resend account owner's address).
+ */
+class ResendEmailProvider implements EmailProvider {
+  private readonly apiKey: string;
+
+  constructor() {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) {
+      throw new Error(
+        'EMAIL_PROVIDER="resend" but RESEND_API_KEY is not set. Add it from the Resend dashboard.',
+      );
+    }
+    this.apiKey = key;
+  }
+
+  async send(params: { to: string; subject: string; html: string; text: string }): Promise<void> {
+    let res: Response;
+    try {
+      res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: FROM_LABEL,
+          to: [params.to],
+          subject: params.subject,
+          html: params.html,
+          text: params.text,
+        }),
+      });
+    } catch (err) {
+      logger.error("email_send_failed", {
+        provider: "resend",
+        to: params.to,
+        subject: params.subject,
+        reason: "network",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      throw new Error("Could not reach the email provider.");
+    }
+
+    const body = (await res.json().catch(() => null)) as
+      | { id?: string; message?: string; name?: string }
+      | null;
+
+    if (!res.ok) {
+      logger.error("email_send_failed", {
+        provider: "resend",
+        to: params.to,
+        subject: params.subject,
+        status: res.status,
+        message: body?.message ?? body?.name ?? "unknown error",
+      });
+      throw new Error(`Resend rejected the email (${res.status}).`);
+    }
+
+    logger.info("email_sent", { provider: "resend", to: params.to, subject: params.subject, id: body?.id });
+  }
+}
+
 let cached: EmailProvider | null = null;
 
 export function getEmailProvider(): EmailProvider {
   if (cached) return cached;
   const providerName = process.env.EMAIL_PROVIDER;
   switch (providerName) {
-    // Add a real case here once a provider is chosen, e.g.:
-    // case "resend": cached = new ResendEmailProvider(); break;
+    case "resend":
+      cached = new ResendEmailProvider();
+      break;
     default:
       cached = new ConsoleEmailProvider();
   }
   return cached;
 }
-
-const APP_NAME = "Carnivore Lagos";
-const FROM_LABEL = `${APP_NAME} <no-reply@carnivorelagos.example>`; // replace with the real sending domain once one is chosen
 
 export async function sendEmailVerificationCode(email: string, code: string): Promise<void> {
   await getEmailProvider().send({
@@ -52,6 +131,23 @@ export async function sendEmailVerificationCode(email: string, code: string): Pr
     subject: `Your ${APP_NAME} verification code`,
     text: `Your verification code is ${code}. It expires in 5 minutes. Never share this code.`,
     html: `<p>Your verification code is <strong>${code}</strong>. It expires in 5 minutes.</p><p>Never share this code with anyone.</p>`,
+  });
+}
+
+/**
+ * "Secure your order history" magic link (amendment 4). One tap after an
+ * order: click the link, the address is verified, and this device's
+ * history + saved card become recoverable from any device by re-verifying
+ * the same email.
+ */
+export async function sendHistoryMagicLink(email: string, url: string): Promise<void> {
+  await getEmailProvider().send({
+    to: email,
+    subject: `Confirm your email to keep your ${APP_NAME} order history`,
+    text: `Tap this link to keep your order history safe: ${url}\n\nIt expires in 45 minutes. If you didn't order from ${APP_NAME}, ignore this email.`,
+    html: `<p>Tap the button below to keep your ${APP_NAME} order history and saved card, recoverable from any device.</p>
+<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 20px;background:#e4231d;color:#fff;text-decoration:none;font-weight:600">Confirm my email</a></p>
+<p style="color:#666;font-size:13px">This link expires in 45 minutes. If you didn't order from ${APP_NAME}, you can ignore this email.</p>`,
   });
 }
 

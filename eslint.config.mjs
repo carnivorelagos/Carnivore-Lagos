@@ -9,8 +9,12 @@ const eslintConfig = defineConfig([
     rules: {
       // Route Handlers often receive an unused `req` when only `ctx` is
       // needed (or vice versa) — the Next.js convention for "intentionally
-      // unused" is an underscore prefix.
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      // unused" is an underscore prefix. Same prefix marks a value pulled
+      // out of a `{ x, ...rest }` destructure only to drop it from `rest`.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

@@ -88,11 +88,55 @@ export async function sendWebPushToCustomer(customerId: string, payload: PushPay
   );
 }
 
+/**
+ * Fan a payload out to every browser every admin has opted in on — the
+ * real-time "new paid order" alert for the kitchen. Separate table from
+ * the customer subs so a shared browser never gets the wrong payload.
+ */
+export async function sendWebPushToAdmins(payload: PushPayload): Promise<void> {
+  if (!ensureConfigured()) return;
+
+  const subs = await prisma.adminPushSubscription
+    .findMany()
+    .catch(() => [] as { id: string; endpoint: string; p256dh: string; auth: string }[]);
+
+  if (subs.length === 0) return;
+
+  const body = JSON.stringify(payload);
+
+  await Promise.all(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          body,
+          { TTL: 60 * 60 * 6 },
+        );
+        await prisma.adminPushSubscription
+          .update({ where: { id: sub.id }, data: { lastUsedAt: new Date() } })
+          .catch(() => undefined);
+      } catch (err) {
+        const statusCode = (err as { statusCode?: number })?.statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await prisma.adminPushSubscription.delete({ where: { id: sub.id } }).catch(() => undefined);
+          logger.info("admin_web_push_subscription_pruned", { statusCode });
+        } else {
+          logger.error("admin_web_push_send_failed", {
+            statusCode,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }),
+  );
+}
+
 /** Best-effort cleanup for the reconcile cron — drop very stale subs. */
 export async function prunePushSubscriptions(olderThanDays = 120): Promise<number> {
   const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
-  const res = await prisma.pushSubscription
-    .deleteMany({ where: { lastUsedAt: { lt: cutoff } } })
-    .catch(() => ({ count: 0 }));
-  return res.count;
+  const [customer, admin] = await Promise.all([
+    prisma.pushSubscription.deleteMany({ where: { lastUsedAt: { lt: cutoff } } }).catch(() => ({ count: 0 })),
+    prisma.adminPushSubscription.deleteMany({ where: { lastUsedAt: { lt: cutoff } } }).catch(() => ({ count: 0 })),
+  ]);
+  return customer.count + admin.count;
 }

@@ -3,88 +3,104 @@
 /* ---------------------------------------------------------------------------
    Carnivore Lagos — design tokens
 
-   Two visual systems live in one Tailwind build. The STOREFRONT is the
-   default: a warm, near-black steakhouse palette, committed dark (it does
-   not follow prefers-color-scheme — the brand is dark on purpose). The
-   ADMIN dashboard re-declares the same semantic tokens to a light,
-   restrained palette under a `.admin` scope class set on <body> by the
-   /admin layout. Every component uses the semantic names (bg / surface /
-   text / accent / line …) and therefore renders correctly in both.
+   Brand palette (from packaging): char-black, bone-white, and one signature
+   RED. No gold, no orange in the UI chrome — ember/amber survives only as
+   the "on the grill" progress signal and the odd flame glow.
+
+   Two visual systems in one Tailwind build. The STOREFRONT is the default:
+   committed char-black, bright bone type, red that actually bites. It does
+   NOT follow prefers-color-scheme — the brand is dark on purpose, like the
+   bucket. The ADMIN dashboard re-declares the same semantic tokens to a
+   crisp near-white system (the pizza-box side of the brand) under a `.admin`
+   scope class set on <body> by the /admin layout. Every component uses the
+   semantic names (bg / surface / text / accent / line …) so both render
+   correctly with no per-component branching.
 --------------------------------------------------------------------------- */
 
 @theme {
-  /* Fonts — actual families come from next/font vars set on <html>. */
+  /* Fonts — real families come from next/font vars set on <html>.
+     Display is Anton: tall, heavy, condensed — the closest legible stand-in
+     for the brushed brand lettering. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
+  --font-display: var(--font-anton), "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
 
-  /* Radius scale — storefront values. Admin overrides below. One scale
-     per surface (Shape Consistency). */
-  --radius-sm: 2px;
-  --radius-md: 3px;
+  /* Radius scale — STOREFRONT: near-square, industrial, like the box.
+     Admin softens this below. One scale per surface (Shape Consistency). */
+  --radius-sm: 1px;
+  --radius-md: 2px;
   --radius-lg: 4px;
-  --radius-xl: 6px;
+  --radius-xl: 8px;
 
   /* Semantic colour tokens — STOREFRONT (default). */
-  --color-bg: #15100d;
-  --color-surface: #1f1712;
-  --color-raised: #2a1f18;
-  --color-text: #f3e9de;
-  --color-muted: #b7a594;
-  /* Lifted from #82705f so 12px meta/helper text clears WCAG AA on the
-     near-black ground. */
-  --color-subtle: #9d8a79;
-  --color-line: #3a2c22;
-  --color-line-strong: #55412f;
+  --color-bg: #0c0b0b;
+  --color-surface: #161413;
+  --color-raised: #211d1b;
+  --color-text: #f7f3ef;
+  --color-muted: #a99f97;
+  /* Meta / 12px helper text — tuned to clear WCAG AA on the char-black ground. */
+  --color-subtle: #948a82;
+  --color-line: #2b2724;
+  --color-line-strong: #423b36;
 
-  --color-accent: #d6491f;
-  --color-accent-hover: #b93d19;
-  --color-on-accent: #fbede6;
-  --color-gold: #d3a24c;
+  /* The signature. Vivid enough to carry a CTA on pure black. */
+  --color-accent: #e4231d;
+  --color-accent-hover: #c31a15;
+  --color-on-accent: #ffffff;
 
-  --color-success: #4c9a6a;
-  --color-warning: #dda53a;
-  --color-danger: #db4a3d;
-  --color-focus: #d3a24c;
+  /* Repurposed: ember/amber — ONLY "cooking / in progress" + rare flame. */
+  --color-gold: #e08a34;
+  --color-ember: #f2681c;
+  /* Bone: warm off-white for eyebrows, kickers, hairline labels on dark. */
+  --color-bone: #efe6da;
 
-  /* Tinted, background-hued shadow (never pure black on the dark ground). */
-  --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.55);
-  --shadow-pop: 0 12px 40px -12px rgb(0 0 0 / 0.7);
+  --color-success: #4fa374;
+  --color-warning: #e0a13a;
+  --color-danger: #e5473b;
+  --color-focus: #e4231d;
+
+  /* Shadows carry the ground's hue, never pure black on the dark shell. */
+  --shadow-raise: 0 1px 2px rgb(0 0 0 / 0.45), 0 10px 30px -14px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 18px 50px -14px rgb(0 0 0 / 0.72);
+  --shadow-ember: 0 1px 0 rgb(255 255 255 / 0.09) inset, 0 8px 24px -10px rgb(228 35 29 / 0.5);
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ADMIN scope — light, dense, functional. Same token names, new values. */
+/* ADMIN scope — the pizza-box side: crisp, near-white, neutral ink. */
 .admin {
   color-scheme: light;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
   --radius-lg: 8px;
-  --radius-xl: 10px;
+  --radius-xl: 12px;
 
-  --color-bg: #f7f5f2;
+  --color-bg: #f3f3f2;
   --color-surface: #ffffff;
-  --color-raised: #ffffff;
-  --color-text: #1c1815;
-  --color-muted: #6b625a;
-  --color-subtle: #7d746a;
-  --color-line: #e4ded6;
-  --color-line-strong: #d3cabd;
-  /* was #948b81 — darkened for AA on the light admin ground */
+  --color-raised: #fafafa;
+  --color-text: #17161a;
+  --color-muted: #5f5c64;
+  --color-subtle: #78757e;
+  --color-line: #e6e5e7;
+  --color-line-strong: #d1d0d4;
 
-  --color-accent: #b93d19;
-  --color-accent-hover: #9c3315;
+  --color-accent: #c81c17;
+  --color-accent-hover: #a71510;
   --color-on-accent: #ffffff;
-  --color-gold: #b93d19;
 
-  --color-success: #2e7d4f;
-  --color-warning: #a96b12;
-  --color-danger: #c0392b;
-  --color-focus: #b93d19;
+  --color-gold: #b5701c;
+  --color-ember: #c8480f;
+  --color-bone: #2b2a2e;
 
-  --shadow-raise: 0 1px 2px rgb(28 24 21 / 0.06), 0 2px 8px -2px rgb(28 24 21 / 0.08);
-  --shadow-pop: 0 16px 48px -16px rgb(28 24 21 / 0.22);
+  --color-success: #1f7a4d;
+  --color-warning: #97640f;
+  --color-danger: #c0271c;
+  --color-focus: #c81c17;
+
+  --shadow-raise: 0 1px 2px rgb(23 22 26 / 0.05), 0 2px 10px -3px rgb(23 22 26 / 0.08);
+  --shadow-pop: 0 16px 48px -16px rgb(23 22 26 / 0.2);
+  --shadow-ember: 0 1px 2px rgb(200 28 23 / 0.25), 0 8px 20px -10px rgb(200 28 23 / 0.35);
 }
 
 @layer base {
@@ -112,20 +128,32 @@
     text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4 {
+  /* Display tier (Anton): h1/h2 only. Big, tight, quietly wide-tracked so
+     the condensed caps don't jam together. */
+  h1, h2 {
     font-family: var(--font-display);
-    font-weight: 460;
-    letter-spacing: -0.01em;
+    font-weight: 400;
+    line-height: 0.98;
+    letter-spacing: 0.006em;
   }
 
-  /* Tabular figures for anything price/quantity/reference shaped. */
+  /* Sub-display: kept in the sans so forms, cards and admin panels don't
+     shout. Heavy weight + tight tracking carries the hierarchy instead. */
+  h3, h4 {
+    font-family: var(--font-sans);
+    font-weight: 640;
+    letter-spacing: -0.006em;
+    line-height: 1.2;
+  }
+
+  /* Tabular figures for anything price / quantity / reference shaped. */
   .tnum {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-accent) 32%, transparent);
+    background: color-mix(in oklab, var(--color-accent) 34%, transparent);
     color: var(--color-text);
   }
 
@@ -135,7 +163,6 @@
     border-radius: 1px;
   }
 
-  /* Native form controls inherit the surface. */
   input, select, textarea, button {
     font: inherit;
     color: inherit;
@@ -159,7 +186,9 @@
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0 !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0 !important;
     scroll-behavior: auto !important;
   }
 }
@@ -176,6 +205,60 @@
     margin-inline: auto;
   }
 
+  /* Hero-scale lockup: uppercase Anton, pulled tight. Opt-in per page. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    line-height: 0.9;
+    letter-spacing: -0.008em;
+  }
+
+  /* Kicker / eyebrow label — the "— 20 CHICKEN WINGS —" voice. */
+  .eyebrow {
+    font-family: var(--font-sans);
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--color-subtle);
+  }
+
+  /* The red brush stroke under a heading (echoes the box tagline rule). */
+  .brand-rule {
+    position: relative;
+  }
+  .brand-rule::after {
+    content: "";
+    display: block;
+    width: 2.75rem;
+    height: 3px;
+    margin-top: 0.75rem;
+    background: var(--color-accent);
+    transform: skewX(-18deg);
+  }
+  .brand-rule.is-center::after {
+    margin-inline: auto;
+  }
+
+  /* Matte print grain — one fixed, non-interactive overlay for the shell. */
+  .grain-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 140px 140px;
+  }
+
+  /* Edge-fade mask for horizontal scrollers (category rail, etc). */
+  .edge-fade {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+  }
+
   /* Fade+rise used for route-level content and scroll reveals. */
   @keyframes rise {
     from { opacity: 0; transform: translate3d(0, 12px, 0); }
@@ -183,6 +266,80 @@
   }
   .animate-rise {
     animation: rise 0.5s var(--ease-out-quint) both;
+  }
+
+  /* Data-load reveal: shorter than .animate-rise, for content that
+     swaps in after a skeleton (fires on every fetch, not just first
+     paint). transform + opacity only; GPU compositable. */
+  @keyframes reveal {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+  .animate-reveal {
+    animation: reveal 0.38s var(--ease-out-quint) both;
+  }
+
+  /* Opacity-only swap — for text that changes in place (e.g. a button's
+     "working…" → "still working…"). No movement. */
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-fade {
+    animation: fade 0.18s ease both;
+  }
+
+  /* Staggered children — set `style={{ "--i": n }}` per item. Delay is
+     clamped so a long list never holds the last item back by seconds. */
+  .stagger-item {
+    animation: reveal 0.42s var(--ease-out-quint) both;
+    animation-delay: calc(min(var(--i, 0), 8) * 45ms);
+  }
+
+  /* Route-transition progress bar (RouteProgress). The bar itself is a
+     single GPU-composited scaleX; JS only nudges the target width a few
+     times during an indeterminate wait. */
+  .route-progress {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 100;
+    height: 2px;
+    pointer-events: none;
+    transform-origin: left center;
+    background: linear-gradient(
+      90deg,
+      var(--color-accent),
+      color-mix(in oklab, var(--color-accent) 55%, var(--color-ember))
+    );
+    box-shadow: 0 0 8px color-mix(in oklab, var(--color-accent) 60%, transparent);
+    opacity: 0;
+    transform: scaleX(0);
+    transition:
+      transform 0.4s linear,
+      opacity 0.25s ease;
+  }
+  .route-progress[data-state="loading"] {
+    opacity: 1;
+  }
+  .route-progress[data-state="finishing"] {
+    opacity: 1;
+    transform: scaleX(1);
+    transition:
+      transform 0.2s var(--ease-out-quint),
+      opacity 0.25s ease 0.15s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .route-progress {
+      transform: scaleX(1);
+      opacity: 0;
+    }
+    .route-progress[data-state="loading"] {
+      opacity: 0.5;
+    }
+    .route-progress[data-state="finishing"] {
+      opacity: 0;
+    }
   }
 
   @keyframes shimmer {
