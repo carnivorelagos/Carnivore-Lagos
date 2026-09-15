@@ -7,7 +7,7 @@
  *   --dry                 Build + print every prompt and the cost estimate. Generates nothing.
  *   --force               Re-generate products that already have an imageUrl.
  *   --only=slug[,slug...]  Restrict to specific products (by name-slug).
- *   --provider=fal|openai|gemini    Override IMAGE_GEN_PROVIDER.
+ *   --provider=fal|openai|gemini|pexels    Override IMAGE_GEN_PROVIDER.
  *   --target=cloudinary|local       Override where images are stored (default: cloudinary if
  *                                   configured, else public/products/*.png served by Next).
  *   --concurrency=N        Parallel generations (default 3).
@@ -16,7 +16,12 @@
  *   IMAGE_GEN_PROVIDER   "fal" (default) | "openai" | "gemini"
  *   FAL_KEY              fal.ai  — FLUX.1 schnell, ~$0.003/image
  *   OPENAI_API_KEY      OpenAI  — gpt-image-1, ~$0.04/image
- *   GEMINI_API_KEY      Google  — Imagen, cheap / free tier   (GEMINI_IMAGE_MODEL to override)
+ *   GEMINI_API_KEY      Google  — Gemini image-out models, ~$0.02-0.04/image. Image generation is
+ *                       NOT covered by the free tier (text-only calls are); a billing-enabled
+ *                       project is required. (GEMINI_IMAGE_MODEL to override, default below.)
+ *   PEXELS_API_KEY      Pexels — free stock photos, $0/image, instant free key, no card.
+ *                       Real stock photography of the closest matching generic dish, not an
+ *                       actual photo of your food — an interim stand-in, not a generated one.
  *   CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET   (optional — see --target)
  *   DATABASE_URL        Neon pooled connection (same one the app uses)
  */
@@ -85,7 +90,68 @@ function promptFor(product) {
   return `${n}.${d} ${framing} ${STYLE}`;
 }
 
-const COST = { fal: 0.003, openai: 0.04, gemini: 0.02 };
+// Pexels is a keyword search, not a generator — a long AI-style prompt
+// (see promptFor above) is a poor query for it, and most of these dish
+// names mean nothing to an English-language stock search. Hand-mapped
+// to the closest generic, recognisable dish per product for a much
+// better hit rate than deriving a query from the name automatically.
+const PEXELS_SEARCH_TERMS = {
+  asun: "grilled goat meat spicy pepper",
+  "avocado-banana-and-pear-smoothie": "avocado banana smoothie glass",
+  "balangu-ram-suya": "grilled lamb skewers charcoal",
+  "banana-orange-and-pineapple-smoothie": "banana orange pineapple smoothie",
+  "beef-shawarma": "beef shawarma wrap",
+  "beef-tozo": "grilled beef skewers charcoal",
+  "bolognese-spaghetti": "spaghetti bolognese",
+  "carnivore-platter": "mixed grill meat platter",
+  "carrot-and-pineapple-detox-smoothie": "carrot pineapple smoothie",
+  "catfish-pepper-soup": "spicy fish soup bowl",
+  chapman: "red fruit cocktail drink glass",
+  "chicken-lap-suya": "grilled chicken leg spicy",
+  "chicken-pepper-soup": "chicken pepper soup bowl",
+  "chicken-salad": "chicken salad bowl",
+  "chicken-shawarma": "chicken shawarma wrap",
+  "coconut-rice": "coconut rice dish",
+  "croaker-fish-pepper-soup": "spicy fish soup bowl",
+  "fish-suya": "grilled whole fish skewer",
+  "fried-rice-and-chicken-wings": "fried rice chicken wings plate",
+  "giant-prawn-suya": "grilled prawns skewer",
+  gizdodo: "fried plantain stew bowl",
+  "gizzard-suya": "grilled chicken gizzard skewers",
+  "goat-meat-pepper-soup": "goat meat pepper soup bowl",
+  "grilled-chicken-wings": "grilled chicken wings plate",
+  "half-chicken-suya": "grilled chicken suya skewers",
+  "half-guinea-fowl-suya": "roast game bird grilled",
+  "jollof-rice-and-chicken-wings": "jollof rice chicken wings",
+  "jumbo-turkey-wing-suya": "grilled turkey wing",
+  "kidney-suya": "grilled meat skewers charcoal",
+  "long-island": "long island iced tea cocktail",
+  milkshake: "milkshake glass",
+  "mixed-rice-combo": "rice chicken plantain plate",
+  "mixed-shawarma": "shawarma wrap",
+  mojito: "mojito cocktail glass",
+  "native-rice": "rice dish with smoked fish",
+  "peanut-butter-banana-smoothie": "peanut butter banana smoothie",
+  "pepper-snail": "escargot spicy sauce",
+  "pina-colada": "pina colada cocktail",
+  "pineapple-coconut-and-banana-smoothie": "pineapple coconut smoothie",
+  "ram-suya-indomie": "stir fry noodles meat",
+  "ram-suya-pasta": "spaghetti with meat sauce",
+  "ram-suya-shawarma": "lamb shawarma wrap",
+  steak: "grilled steak plate",
+  "stir-fry-spaghetti-and-chicken-wings": "stir fry spaghetti vegetables",
+  tomahawk: "tomahawk steak bone",
+  "turkey-pepper-soup": "turkey pepper soup bowl",
+  "virgin-colada": "pina colada mocktail",
+  "virgin-mojito": "virgin mojito mocktail",
+  "watermelon-pineapple-and-ginger-smoothie": "watermelon smoothie glass",
+};
+
+function searchQueryFor(product) {
+  return PEXELS_SEARCH_TERMS[product.slug] || `${product.name} food`;
+}
+
+const COST = { fal: 0.003, openai: 0.04, gemini: 0.02, pexels: 0 };
 
 // --- providers: prompt -> PNG/JPEG Buffer -------------------------
 async function generateFal(prompt) {
@@ -128,30 +194,86 @@ async function generateOpenai(prompt) {
 async function generateGemini(prompt) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
-  const model = process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
+  // Google retired the standalone Imagen `:predict` REST models in favor of
+  // image output from regular Gemini models via `:generateContent` — the
+  // image comes back as an inlineData part alongside (or instead of) text.
+  const model = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1, aspectRatio: "1:1" },
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] },
       }),
     },
   );
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const json = await res.json();
-  const b64 = json?.predictions?.[0]?.bytesBase64Encoded;
+  const parts = json?.candidates?.[0]?.content?.parts ?? [];
+  const b64 = parts.find((p) => p.inlineData)?.inlineData?.data;
   if (!b64) throw new Error(`gemini returned no image: ${JSON.stringify(json).slice(0, 300)}`);
   return Buffer.from(b64, "base64");
 }
 
-const GENERATORS = { fal: generateFal, openai: generateOpenai, gemini: generateGemini };
+// Search + download, not generation — same Buffer-out signature as the
+// generative providers above so it drops into the same pipeline. Keeps a
+// process-wide set of photo ids already used so two products searching
+// similar terms don't end up with the exact same stock photo.
+const usedPexelsIds = new Set();
+async function generatePexels(query) {
+  const key = process.env.PEXELS_API_KEY;
+  if (!key) throw new Error("PEXELS_API_KEY is not set.");
+  const res = await fetch(
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=8&orientation=square`,
+    { headers: { Authorization: key } },
+  );
+  if (!res.ok) throw new Error(`pexels ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const json = await res.json();
+  const photos = json?.photos ?? [];
+  if (!photos.length) throw new Error(`pexels returned no results for "${query}"`);
+  // Prefer unused photos, but still fall through to already-used ones rather
+  // than give up — a search with few results shouldn't fail just because
+  // another product claimed the top hit first.
+  const ordered = [...photos.filter((p) => !usedPexelsIds.has(p.id)), ...photos];
+
+  let lastErr;
+  for (const photo of ordered) {
+    const url = photo?.src?.large ?? photo?.src?.original;
+    if (!url) continue;
+    try {
+      const img = await fetch(url);
+      if (!img.ok) throw new Error(`download ${img.status}`);
+      const buf = Buffer.from(await img.arrayBuffer());
+      usedPexelsIds.add(photo.id);
+      return buf;
+    } catch (err) {
+      // A handful of indexed Pexels photos 404/422 on their own CDN
+      // (removed or reprocessing) — skip to the next candidate instead
+      // of failing the whole product on one bad photo.
+      lastErr = err;
+    }
+  }
+  throw new Error(`pexels: every candidate failed for "${query}": ${lastErr?.message ?? lastErr}`);
+}
+
+const GENERATORS = {
+  fal: generateFal,
+  openai: generateOpenai,
+  gemini: generateGemini,
+  pexels: generatePexels,
+};
+
+// Every generative provider returns PNG bytes; Pexels' CDN serves JPEG.
+// The file extension (and, for Cloudinary, the declared data-URI mime)
+// need to match the real bytes, not be hardcoded to PNG regardless.
+const OUTPUT_EXT = { fal: "png", openai: "png", gemini: "png", pexels: "jpg" };
+const MIME_FOR_EXT = { png: "image/png", jpg: "image/jpeg" };
 
 // --- storage: Buffer -> { imageUrl, imagePublicId } --------------
-async function storeCloudinary(buf, slug) {
-  const dataUri = `data:image/png;base64,${buf.toString("base64")}`;
+async function storeCloudinary(buf, slug, ext) {
+  const dataUri = `data:${MIME_FOR_EXT[ext]};base64,${buf.toString("base64")}`;
   const r = await cloudinary.uploader.upload(dataUri, {
     folder: "products",
     public_id: slug,
@@ -162,17 +284,18 @@ async function storeCloudinary(buf, slug) {
   return { imageUrl: r.secure_url, imagePublicId: r.public_id };
 }
 
-function storeLocal(buf, slug) {
+function storeLocal(buf, slug, ext) {
   const dir = path.join(ROOT, "public", "products");
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${slug}.png`), buf);
-  return { imageUrl: `/products/${slug}.png`, imagePublicId: null };
+  fs.writeFileSync(path.join(dir, `${slug}.${ext}`), buf);
+  return { imageUrl: `/products/${slug}.${ext}`, imagePublicId: null };
 }
 
 // --- run -----------------------------------------------------------
 async function main() {
   const generate = GENERATORS[PROVIDER];
-  if (!generate) throw new Error(`Unknown provider "${PROVIDER}". Use fal | openai | gemini.`);
+  if (!generate) throw new Error(`Unknown provider "${PROVIDER}". Use fal | openai | gemini | pexels.`);
+  const inputFor = PROVIDER === "pexels" ? searchQueryFor : promptFor;
 
   if (TARGET === "cloudinary") {
     cloudinary.config({
@@ -203,7 +326,7 @@ async function main() {
   console.log("");
 
   if (DRY) {
-    for (const p of todo) console.log(`• ${p.slug}\n  ${promptFor(p)}\n`);
+    for (const p of todo) console.log(`• ${p.slug}\n  ${inputFor(p)}\n`);
     console.log("Dry run — nothing generated. Drop --dry to run for real.");
     await prisma.$disconnect();
     return;
@@ -223,9 +346,12 @@ async function main() {
       const p = queue.shift();
       const i = todo.length - queue.length;
       try {
-        const buf = await generate(promptFor(p));
+        const buf = await generate(inputFor(p));
+        const ext = OUTPUT_EXT[PROVIDER] ?? "png";
         const stored =
-          TARGET === "cloudinary" ? await storeCloudinary(buf, p.slug) : storeLocal(buf, p.slug);
+          TARGET === "cloudinary"
+            ? await storeCloudinary(buf, p.slug, ext)
+            : storeLocal(buf, p.slug, ext);
         await prisma.product.update({ where: { id: p.id }, data: stored });
         ok++;
         console.log(`[${i}/${todo.length}] ✓ ${p.slug}  ${stored.imageUrl}`);
