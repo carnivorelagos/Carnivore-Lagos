@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { ForkKnife } from "@phosphor-icons/react";
 import { Money } from "@/components/ui/Money";
 import { formatNaira } from "@/lib/client/format";
 import type { FulfillmentType } from "@/lib/client/types";
@@ -7,6 +9,10 @@ type Line = {
   unitPriceKobo: number;
   quantity: number;
   lineTotalKobo: number;
+  /** The product's *current* image, joined at read time — orders never
+   *  snapshot it. Absent for older API responses; falls back to an icon,
+   *  and for a since-deleted product (productId set null). */
+  imageUrl?: string | null;
 };
 
 /** Receipt-style item list + totals, shared by every order view. */
@@ -27,8 +33,17 @@ export function OrderLineItems({
     <div>
       <ul className="divide-y divide-[var(--color-line)]">
         {items.map((li, i) => (
-          <li key={`${li.productNameSnapshot}-${i}`} className="flex items-start justify-between gap-4 py-3">
-            <div className="min-w-0">
+          <li key={`${li.productNameSnapshot}-${i}`} className="flex items-start gap-3 py-3">
+            <div className="relative size-11 shrink-0 overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-raised)]">
+              {li.imageUrl ? (
+                <Image src={li.imageUrl} alt="" fill sizes="44px" className="object-cover" />
+              ) : (
+                <span className="grid size-full place-items-center text-[var(--color-subtle)]">
+                  <ForkKnife className="size-4" aria-hidden />
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm text-[var(--color-text)]">
                 <span className="tnum text-[var(--color-subtle)]">{li.quantity}× </span>
                 {li.productNameSnapshot}

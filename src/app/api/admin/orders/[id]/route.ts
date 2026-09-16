@@ -17,11 +17,19 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
   const order = await prisma.order.findUnique({
     where: { id: uuidSchema.parse(id) },
     include: {
-      items: true,
+      items: { include: { product: { select: { imageUrl: true } } } },
       payment: true,
     },
   });
 
   if (!order) throw notFound("Order");
-  return ok(order);
+
+  // Flatten the joined product's *current* image onto each item — orders
+  // never snapshot it, so this reflects whatever photo the product has now.
+  const items = order.items.map(({ product, ...item }) => ({
+    ...item,
+    imageUrl: product?.imageUrl ?? null,
+  }));
+
+  return ok({ ...order, items });
 });

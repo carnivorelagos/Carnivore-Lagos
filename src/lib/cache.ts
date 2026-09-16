@@ -62,12 +62,30 @@ export function revalidateCatalog(...tags: Array<keyof typeof CACHE_TAGS>): void
  * absorb repeat traffic at the edge without reaching a function at all;
  * `stale-while-revalidate` keeps the edge serving instantly while it
  * refreshes. Harmless where a CDN ignores it.
+ *
+ * `varyQueryParams` MUST list every query string parameter the route's
+ * response actually depends on. Netlify's durable/edge CDN cache does not
+ * automatically key on arbitrary query params for a Route Handler — left
+ * unset, it only varies on a fixed set of Next-internal params, so every
+ * request to e.g. `/api/products?categoryId=X` regardless of `X` collapses
+ * onto the *same* cache entry (confirmed live: switching menu categories
+ * served whichever category's response happened to be cached first, for
+ * every other category, until this was fixed). Route handlers with no
+ * query-string inputs (categories, settings, `/products/[id]` — a path
+ * segment, not a query param) don't need this.
  */
-export function catalogCdnHeaders(maxAgeSeconds = CATALOG_REVALIDATE_SECONDS): Record<string, string> {
+export function catalogCdnHeaders(
+  maxAgeSeconds = CATALOG_REVALIDATE_SECONDS,
+  varyQueryParams: string[] = [],
+): Record<string, string> {
   const swr = maxAgeSeconds * 10;
-  return {
+  const headers: Record<string, string> = {
     "Cache-Control": `public, max-age=0, must-revalidate`,
     "CDN-Cache-Control": `public, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${swr}`,
     "Netlify-CDN-Cache-Control": `public, s-maxage=${maxAgeSeconds}, stale-while-revalidate=${swr}, durable`,
   };
+  if (varyQueryParams.length) {
+    headers["Netlify-Vary"] = `query=${varyQueryParams.join("|")}`;
+  }
+  return headers;
 }

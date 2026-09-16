@@ -132,6 +132,8 @@ export type OrderItemLine = {
   unitPriceKobo: number;
   quantity: number;
   lineTotalKobo: number;
+  /** The product's *current* image, joined at read time (not a snapshot). */
+  imageUrl?: string | null;
 };
 
 export type CreatedOrder = {
@@ -178,6 +180,7 @@ export type PublicOrder = {
     unitPriceKobo: number;
     quantity: number;
     lineTotalKobo: number;
+    imageUrl: string | null;
   }[];
   payment: { status: PaymentStatus; paidAt: string | null } | null;
   /** True when the request came from the device that placed this order. */

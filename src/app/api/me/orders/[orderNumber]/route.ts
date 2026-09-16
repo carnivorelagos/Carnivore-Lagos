@@ -11,7 +11,7 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
   const order = await prisma.order.findUnique({
     where: { orderNumber },
     include: {
-      items: true,
+      items: { include: { product: { select: { imageUrl: true } } } },
       payment: { select: { reference: true, status: true, paidAt: true } },
     },
   });
@@ -23,5 +23,6 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
     throw notFound("Order");
   }
 
-  return ok(order);
+  const items = order.items.map(({ product, ...item }) => ({ ...item, imageUrl: product?.imageUrl ?? null }));
+  return ok({ ...order, items });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bag, Motorcycle, Storefront, WarningCircle } from "@phosphor-icons/react";
@@ -399,17 +400,24 @@ export default function CheckoutPage() {
         <aside className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 lg:sticky lg:top-24">
           <h2 className="font-display text-lg">Order</h2>
 
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-3 space-y-2.5 text-sm">
             {items.map((i) => {
               const flagged = unavailableIds.includes(i.productId);
               return (
                 <li
                   key={i.productId}
-                  className={`flex justify-between gap-3 ${flagged ? "text-[var(--color-danger)]" : ""}`}
+                  className={`flex items-center justify-between gap-3 ${flagged ? "text-[var(--color-danger)]" : ""}`}
                 >
-                  <span className="min-w-0 truncate">
-                    <span className="tnum text-[var(--color-subtle)]">{i.quantity}×</span> {i.name}
-                    {flagged ? " · unavailable" : ""}
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="relative inline-flex size-9 shrink-0 overflow-hidden rounded border border-[var(--color-line)] bg-[var(--color-raised)]">
+                      {i.imageUrl ? (
+                        <Image src={i.imageUrl} alt="" fill sizes="36px" className="object-cover" />
+                      ) : null}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      <span className="tnum text-[var(--color-subtle)]">{i.quantity}×</span> {i.name}
+                      {flagged ? " · unavailable" : ""}
+                    </span>
                   </span>
                   <span className="tnum shrink-0 text-[var(--color-muted)]">
                     {formatNaira(i.priceKobo * i.quantity)}

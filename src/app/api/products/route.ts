@@ -73,6 +73,8 @@ export const GET = withApiHandler(async (req: NextRequest) => {
   const data = await readProductPage(categoryId, page, limit);
 
   const res = ok(data);
-  for (const [k, v] of Object.entries(catalogCdnHeaders())) res.headers.set(k, v);
+  for (const [k, v] of Object.entries(catalogCdnHeaders(CATALOG_REVALIDATE_SECONDS, ["categoryId", "page", "limit"]))) {
+    res.headers.set(k, v);
+  }
   return res as NextResponse;
 });

@@ -34,7 +34,13 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
       createdAt: true,
       deviceProfileId: true,
       items: {
-        select: { productNameSnapshot: true, unitPriceKobo: true, quantity: true, lineTotalKobo: true },
+        select: {
+          productNameSnapshot: true,
+          unitPriceKobo: true,
+          quantity: true,
+          lineTotalKobo: true,
+          product: { select: { imageUrl: true } },
+        },
       },
       payment: { select: { status: true, paidAt: true } },
     },
@@ -52,6 +58,7 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
         .trim()
     : null;
 
-  const { deviceProfileId: _drop, ...safe } = order;
-  return ok({ ...safe, ownedByThisDevice, canPayWithSavedCard, savedCardLabel });
+  const { deviceProfileId: _drop, items, ...safe } = order;
+  const flatItems = items.map(({ product, ...item }) => ({ ...item, imageUrl: product?.imageUrl ?? null }));
+  return ok({ ...safe, items: flatItems, ownedByThisDevice, canPayWithSavedCard, savedCardLabel });
 });
