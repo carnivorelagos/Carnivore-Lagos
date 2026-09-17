@@ -4,9 +4,14 @@ import { forwardRef, useId } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 
+// 16px, not 15 — iOS Safari (and Chrome on iOS, same WebKit engine) auto-
+// zooms the whole page in when a focused text input's font-size is under
+// 16px, and doesn't reliably zoom back out on blur. That auto-zoom, not a
+// layout bug, was the live "cutting off on the right" report: tapping the
+// next field re-triggers it, which is why a manual pinch-back never held.
 export const controlClasses =
   "w-full rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] " +
-  "px-3.5 text-[15px] text-[var(--color-text)] transition-colors " +
+  "px-3.5 text-base text-[var(--color-text)] transition-colors " +
   "placeholder:text-[var(--color-subtle)] " +
   "focus:border-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-1 " +
   "focus-visible:outline-[var(--color-focus)] " +

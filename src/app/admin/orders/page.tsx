@@ -165,7 +165,8 @@ function OrdersTable() {
           id="status-filter"
           value={statusParam ?? ""}
           onChange={(e) => setParams({ status: e.target.value || null })}
-          className="h-9 rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-2.5 text-[13px] text-[var(--color-text)]"
+          // 16px, not 13 — under 16px, iOS Safari/Chrome auto-zoom the page on focus (see form.tsx).
+          className="h-9 rounded-md border border-[var(--color-line-strong)] bg-[var(--color-surface)] px-2.5 text-base text-[var(--color-text)]"
         >
           <option value="">All statuses</option>
           {ORDER_STATUSES.map((s) => (

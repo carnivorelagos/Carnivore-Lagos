@@ -247,7 +247,8 @@ export function SmartSearch({ onActiveChange }: { onActiveChange?: (active: bool
           onChange={(e) => setRaw(e.target.value)}
           placeholder="What are you craving?"
           aria-label="Search the menu"
-          className="h-12 w-full rounded-xl border border-[var(--color-line-strong)] bg-[var(--color-surface)] pl-11 pr-10 text-[15px] text-[var(--color-text)] outline-none transition-colors focus:border-[var(--color-accent)]"
+          // 16px, not 15 — under 16px, iOS Safari/Chrome auto-zoom the page on focus (see form.tsx).
+          className="h-12 w-full rounded-xl border border-[var(--color-line-strong)] bg-[var(--color-surface)] pl-11 pr-10 text-base text-[var(--color-text)] outline-none transition-colors focus:border-[var(--color-accent)]"
         />
         {raw ? (
           <button
