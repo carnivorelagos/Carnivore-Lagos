@@ -279,7 +279,7 @@ async function storeCloudinary(buf, slug, ext) {
     public_id: slug,
     overwrite: true,
     resource_type: "image",
-    transformation: [{ width: 1200, height: 1200, crop: "limit" }],
+    transformation: [{ width: 1200, height: 1200, crop: "limit", quality: "auto:good" }],
   });
   return { imageUrl: r.secure_url, imagePublicId: r.public_id };
 }

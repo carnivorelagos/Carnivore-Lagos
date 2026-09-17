@@ -416,4 +416,5 @@ export type ImageSignature = {
   apiKey: string;
   cloudName: string;
   folder: string;
+  transformation: string;
 };

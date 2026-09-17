@@ -295,6 +295,10 @@ export async function uploadToCloudinary(
   form.append("api_key", sig.apiKey);
   form.append("timestamp", String(sig.timestamp));
   form.append("folder", sig.folder);
+  // Must match exactly what the server signed (buildUploadSignature) — an
+  // incoming transformation, so Cloudinary caps/compresses the file before
+  // storing it rather than keeping the raw upload at full size.
+  form.append("transformation", sig.transformation);
   form.append("signature", sig.signature);
 
   const res = await fetch(

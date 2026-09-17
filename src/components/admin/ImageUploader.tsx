@@ -27,7 +27,18 @@ export function ImageUploader({
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // Cloudinary's free-plan per-image cap.
+
   const pick = (f: File | null) => {
+    if (f && f.size > MAX_UPLOAD_BYTES) {
+      toast({
+        tone: "danger",
+        title: "Image too large",
+        description: "That photo is over 10MB. Resize it or pick a smaller one and try again.",
+      });
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
   };
@@ -81,7 +92,8 @@ export function ImageUploader({
             className="block w-full text-[12.5px] text-muted file:mr-3 file:rounded-md file:border file:border-line-strong file:bg-surface file:px-3 file:py-1.5 file:text-[12.5px] file:font-medium file:text-text"
           />
           <p className="mt-1.5 text-[12px] text-subtle">
-            Uploads straight to Cloudinary. JPG or PNG, landscape works best.
+            Uploads straight to Cloudinary (auto-resized and compressed, up to
+            10MB). JPG or PNG, landscape works best.
           </p>
           {file ? (
             <Button size="sm" className="mt-2.5" loading={busy} onClick={() => void upload()} icon={<UploadSimple className="size-4" />}>

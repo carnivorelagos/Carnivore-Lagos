@@ -10,12 +10,25 @@ import { v2 as cloudinary } from "cloudinary";
 
 const ALLOWED_FOLDERS = new Set(["products"]);
 
+// An "incoming transformation" — Cloudinary applies this to the file
+// *before* storing it, so what actually lands in Cloudinary (and counts
+// against storage/bandwidth) is already capped and compressed, not
+// whatever multi-megabyte original a phone camera produced. `c_limit`
+// only ever downscales (never enlarges a smaller source); `q_auto:good`
+// is Cloudinary's own perceptual compression. This is Cloudinary's own
+// infrastructure doing the work at upload time — it adds no load to our
+// side at all (the Netlify function only ever signs a small JSON
+// payload; the browser uploads straight to Cloudinary, per the module
+// comment below).
+const UPLOAD_TRANSFORMATION = "w_1600,h_1600,c_limit,q_auto:good";
+
 export function buildUploadSignature(folder: string): {
   timestamp: number;
   signature: string;
   apiKey: string;
   cloudName: string;
   folder: string;
+  transformation: string;
 } {
   if (!ALLOWED_FOLDERS.has(folder)) {
     throw new Error(`Upload folder "${folder}" is not allowed.`);
@@ -29,7 +42,13 @@ export function buildUploadSignature(folder: string): {
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const signature = cloudinary.utils.api_sign_request({ timestamp, folder }, apiSecret);
+  // Every param that affects the resource must be signed, and the client
+  // must send back this exact same value — Cloudinary recomputes the
+  // signature from what actually arrives and rejects a mismatch.
+  const signature = cloudinary.utils.api_sign_request(
+    { timestamp, folder, transformation: UPLOAD_TRANSFORMATION },
+    apiSecret,
+  );
 
-  return { timestamp, signature, apiKey, cloudName, folder };
+  return { timestamp, signature, apiKey, cloudName, folder, transformation: UPLOAD_TRANSFORMATION };
 }
