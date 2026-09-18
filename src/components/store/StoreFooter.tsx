@@ -12,9 +12,9 @@ export function StoreFooter() {
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--color-muted)]">
             {BRAND.promise}
           </p>
-          <p className="mt-4 flex items-center gap-1.5 text-[13px] text-[var(--color-subtle)]">
-            <MapPin className="size-4" aria-hidden />
-            {BRAND.city}
+          <p className="mt-4 flex max-w-xs items-start gap-1.5 text-[13px] leading-snug text-[var(--color-subtle)]">
+            <MapPin className="mt-px size-4 shrink-0" aria-hidden />
+            <span>{BRAND.addressLine}</span>
           </p>
         </div>
 
