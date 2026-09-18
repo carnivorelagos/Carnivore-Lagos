@@ -3,8 +3,10 @@ import { cn } from "@/lib/client/cn";
 import { BRAND } from "@/lib/client/brand";
 
 /**
- * Text wordmark (no logo asset yet). Anton, uppercase, locked tight.
- * Swap for the real logo when it arrives.
+ * Text wordmark (no logo asset yet). Drazel brush face (--font-logo),
+ * uppercase. Swap for the real logo when it arrives. Drazel is narrower and
+ * lighter than the display face, so the sizes run larger than they did in
+ * Anton to keep the same presence.
  */
 export function Wordmark({
   className,
@@ -16,15 +18,15 @@ export function Wordmark({
   href?: string | null;
 }) {
   const sizeClass = {
-    sm: "text-[15px]",
-    md: "text-[18px]",
-    lg: "text-[28px]",
+    sm: "text-[22px]",
+    md: "text-[27px]",
+    lg: "text-[42px]",
   }[size];
 
   const inner = (
     <span
       className={cn(
-        "inline-flex items-center gap-[0.28em] font-display uppercase leading-none tracking-[0.01em] text-[var(--color-text)]",
+        "inline-flex items-center gap-[0.3em] font-logo uppercase leading-none tracking-[0.02em] text-[var(--color-text)]",
         sizeClass,
         className,
       )}

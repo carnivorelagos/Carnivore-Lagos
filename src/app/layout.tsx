@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Anton, Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { RouteProgress } from "@/components/system/RouteProgress";
@@ -14,6 +15,21 @@ const anton = Anton({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-anton",
+  weight: "400",
+});
+
+/**
+ * Logo face — Drazel (idealistudio), a distressed brush font, used ONLY for
+ * the "CARNIVORE LAGOS" wordmark. Subset to A-Z, 0-9, space and a few
+ * punctuation marks (~14KB) — enough for the wordmark, not the full font.
+ * NOTE: the free download is "personal use only"; a commercial license is
+ * sold at https://creativemarket.com/idealistudio/292381885-DRAZEL-%E2%80%94-Distressed-Brush-Font
+ * To switch to licensed files, replace fonts/Drazel-subset.woff2.
+ */
+const drazel = localFont({
+  src: "./fonts/Drazel-subset.woff2",
+  display: "swap",
+  variable: "--font-drazel",
   weight: "400",
 });
 
@@ -62,7 +78,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${anton.variable} ${drazel.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>
         <Suspense fallback={null}>
