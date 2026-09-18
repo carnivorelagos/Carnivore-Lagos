@@ -10,11 +10,11 @@ export const BRAND = {
   shortName: "Carnivore",
   tagline: "A Lagos grill house",
   // One-liner used in hero + meta.
-  promise: "Suya, grills and pepper soup, fired over open coals and sent your way.",
+  promise: "...from farm to table",
   city: "Lagos, Nigeria",
 
   // --- PLACEHOLDERS - confirm with the restaurant ---
-  addressLine: "Address to be confirmed",
+  addressLine: "No 68 Admiralty Way, Lekki Phase 1, Kodak Mall",
   phoneDisplay: "+234 -",
   hours: [
     { days: "Mon – Thu", time: "12:00 – 22:00" },
