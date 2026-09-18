@@ -19,6 +19,7 @@ import { TextField } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/feedback";
 import { OrderTrackingSkeleton } from "@/components/store/skeletons";
+import { BRAND } from "@/lib/client/brand";
 
 function SecureHistoryPrompt() {
   const { toast } = useToast();
@@ -257,6 +258,12 @@ function OrderView() {
               </>
             ) : null}
           </div>
+          {order.fulfillmentType === "PICKUP" ? (
+            <p className="mb-3 text-[13px] leading-snug text-[var(--color-muted)]">
+              Collect from{" "}
+              <span className="text-[var(--color-text)]">{BRAND.addressLine}</span>
+            </p>
+          ) : null}
           <OrderLineItems
             items={order.items}
             subtotalKobo={order.subtotalKobo}

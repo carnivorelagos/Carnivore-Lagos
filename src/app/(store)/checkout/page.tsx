@@ -25,6 +25,7 @@ import { TextField, TextArea } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Money } from "@/components/ui/Money";
 import { CheckoutSkeleton } from "@/components/store/skeletons";
+import { BRAND } from "@/lib/client/brand";
 import { DeliveryMapField } from "@/components/map/DeliveryMapField";
 import { AddressSearchField } from "@/components/map/AddressSearchField";
 import { EmailVerifyPanel } from "@/components/checkout/EmailVerifyPanel";
@@ -326,6 +327,14 @@ export default function CheckoutPage() {
                   : !s?.pickupEnabled && s?.deliveryEnabled
                     ? "Pickup is paused right now - delivery only."
                     : "Ordering is paused right now. Please check back shortly."}
+              </p>
+            ) : null}
+            {fulfillment === "PICKUP" ? (
+              <p className="mt-3 flex items-start gap-2 text-[13px] leading-snug text-[var(--color-muted)]">
+                <Storefront className="mt-px size-4 shrink-0" aria-hidden />
+                <span>
+                  Pick up at <span className="text-[var(--color-text)]">{BRAND.addressLine}</span>
+                </span>
               </p>
             ) : null}
             {errors.fulfillment ? (

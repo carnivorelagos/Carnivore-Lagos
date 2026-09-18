@@ -13,8 +13,11 @@ export const BRAND = {
   promise: "...from farm to table",
   city: "Lagos, Nigeria",
 
-  // The restaurant's real address (shown in the footer).
-  addressLine: "Road 12, P-58B, Victoria Garden City, Lekki, Lagos",
+  // The restaurant's address. Shown in the footer, on the pickup option at
+  // checkout, on pickup order pages and in pickup receipt emails. (The
+  // delivery starting point is separate: RestaurantSettings origin lat/lng,
+  // set in Admin -> Settings.)
+  addressLine: "No 68 Admiralty Way, Lekki Phase 1, Kodak Mall",
 
   // --- PLACEHOLDERS - confirm with the restaurant ---
   phoneDisplay: "+234 -",

@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import { formatNaira } from "./money";
+import { BRAND } from "./client/brand";
 
 /**
  * Email delivery, behind one interface — same pattern as sms.ts. Swapping
@@ -215,15 +216,22 @@ export async function sendReceiptEmail(to: string, order: ReceiptOrder): Promise
     .map((i) => `  ${i.productNameSnapshot} × ${i.quantity} — ${formatNaira(i.lineTotalKobo)}`)
     .join("\n");
 
+  const isPickup = order.fulfillmentType !== "DELIVERY";
+  const pickupHtml = isPickup
+    ? `<p>Collect your order from: <strong>${escapeHtml(BRAND.addressLine)}</strong></p>`
+    : "";
+  const pickupText = isPickup ? `Collect from: ${BRAND.addressLine}\n` : "";
+
   const html = `
     <h2>Thanks for your order, ${escapeHtml(order.customerName)}!</h2>
     <p>Order <strong>${order.orderNumber}</strong> — ${order.fulfillmentType === "DELIVERY" ? "delivery" : "pickup"}</p>
+    ${pickupHtml}
     <table style="width:100%;border-collapse:collapse">${rows}</table>
     <p>Subtotal: ${formatNaira(order.subtotalKobo)}<br>
     Delivery: ${formatNaira(order.deliveryFeeKobo)}<br>
     <strong>Total: ${formatNaira(order.totalKobo)}</strong></p>
   `;
-  const text = `Thanks for your order, ${order.customerName}!\nOrder ${order.orderNumber} — ${order.fulfillmentType}\n\n${textRows}\n\nSubtotal: ${formatNaira(order.subtotalKobo)}\nDelivery: ${formatNaira(order.deliveryFeeKobo)}\nTotal: ${formatNaira(order.totalKobo)}`;
+  const text = `Thanks for your order, ${order.customerName}!\nOrder ${order.orderNumber} — ${order.fulfillmentType}\n${pickupText}\n${textRows}\n\nSubtotal: ${formatNaira(order.subtotalKobo)}\nDelivery: ${formatNaira(order.deliveryFeeKobo)}\nTotal: ${formatNaira(order.totalKobo)}`;
 
   await getEmailProvider().send({
     to,
