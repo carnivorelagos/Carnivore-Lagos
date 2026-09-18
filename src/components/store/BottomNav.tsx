@@ -18,6 +18,8 @@ export function BottomNav() {
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  // The home page (/) is the menu, so the Menu tab is lit on both.
+  const menuActive = pathname === "/" || isActive("/menu");
 
   const itemClass = (active: boolean) =>
     cn(
@@ -33,8 +35,8 @@ export function BottomNav() {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_88%,transparent)] backdrop-blur-md sm:hidden"
     >
-      <Link href="/menu" className={itemClass(isActive("/menu"))}>
-        <ForkKnife weight={isActive("/menu") ? "fill" : "regular"} className="size-[22px]" />
+      <Link href="/menu" className={itemClass(menuActive)}>
+        <ForkKnife weight={menuActive ? "fill" : "regular"} className="size-[22px]" />
         Menu
       </Link>
       <button type="button" onClick={cartSheet.open} className={itemClass(false)}>

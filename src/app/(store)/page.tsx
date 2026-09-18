@@ -8,10 +8,11 @@ import {
 import { buttonVariants } from "@/components/ui/buttonVariants";
 import { FeaturedGrill } from "@/components/store/FeaturedGrill";
 import { BRAND, PLACEHOLDER_IMAGES } from "@/lib/client/brand";
+import MenuPage from "./menu/page";
 
-// Kept for a possible future restore — not currently rendered (the home
-// page is menu-first now: FeaturedGrill only, then the footer). See the
-// commented-out JSX below.
+// Kept for a possible future restore — not currently rendered. The home
+// page IS the menu now (the full /menu experience: category rail, search,
+// grid), then the footer. See the commented-out JSX below.
 const GRILL_STORY = [
   {
     icon: Fire,
@@ -92,9 +93,14 @@ export default function HomePage() {
       </section>
       */}
 
-      <FeaturedGrill standalone />
+      {/* The home page is the menu itself — same screen as the "Menu" tab,
+          so the site lands straight on the food. (Previously a 6-item
+          <FeaturedGrill standalone /> teaser; kept for a possible restore.) */}
+      <MenuPage />
 
       {/*
+      <FeaturedGrill standalone />
+
       <section className="border-y border-[var(--color-line)] bg-[var(--color-surface)]">
         <div className="shell gutter grid divide-y divide-[var(--color-line)] py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-0">
           {GRILL_STORY.map(({ icon: Icon, title, body }, i) => (

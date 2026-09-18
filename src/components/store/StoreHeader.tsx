@@ -13,8 +13,12 @@ export function StoreHeader() {
   const { count, hydrated } = useCart();
   const cartSheet = useCartSheet();
 
-  const navLink = (href: string, label: string) => {
-    const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+  // `alsoOnHome`: the home page (/) IS the menu, so the Menu link is lit there too.
+  const navLink = (href: string, label: string, alsoOnHome = false) => {
+    const active =
+      pathname === href ||
+      (href !== "/" && pathname.startsWith(href)) ||
+      (alsoOnHome && pathname === "/");
     return (
       <Link
         href={href}
@@ -38,7 +42,7 @@ export function StoreHeader() {
         <div className="flex items-center gap-8">
           <Wordmark size="md" />
           <nav className="hidden items-center gap-7 sm:flex">
-            {navLink("/menu", "Menu")}
+            {navLink("/menu", "Menu", true)}
             {navLink("/history", "Orders")}
           </nav>
         </div>
