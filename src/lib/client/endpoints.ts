@@ -54,6 +54,13 @@ export const getPublicSettings = () => apiRead<PublicSettings>("/api/settings/pu
 export const reverseGeocode = (lat: number, lng: number) =>
   apiRead<{ address: string | null }>("/api/geocode/reverse", { query: { lat, lng } });
 
+/** Best-effort: turns a typed address into candidate map locations (Lagos only). */
+export type AddressSuggestion = { label: string; lat: number; lng: number };
+export const searchAddress = (q: string) =>
+  apiRead<{ results: AddressSuggestion[]; approximate: boolean }>("/api/geocode/search", {
+    query: { q },
+  });
+
 /** Full active menu for the client-side smart search. */
 export const getMenuIndex = () => apiRead<{ items: MenuIndexItem[] }>("/api/menu/index");
 

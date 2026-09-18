@@ -26,6 +26,7 @@ import { Button, buttonVariants } from "@/components/ui/Button";
 import { Money } from "@/components/ui/Money";
 import { CheckoutSkeleton } from "@/components/store/skeletons";
 import { DeliveryMapField } from "@/components/map/DeliveryMapField";
+import { AddressSearchField } from "@/components/map/AddressSearchField";
 import { EmailVerifyPanel } from "@/components/checkout/EmailVerifyPanel";
 
 type FieldErrors = Partial<
@@ -254,6 +255,23 @@ export default function CheckoutPage() {
   const bothFulfilment = !!s?.pickupEnabled && !!s?.deliveryEnabled;
   const displayTotalKobo = quote?.totalKobo ?? subtotalKobo;
 
+  // Why Pay is disabled on a delivery order, in plain words. A delivery
+  // order can't be priced (or paid) until these are filled in, and a
+  // greyed-out button with no explanation reads as "the site is broken".
+  const deliveryBlockers: string[] =
+    fulfillment === "DELIVERY" && !canQuote
+      ? [
+          !pin ? "your delivery location" : null,
+          name.trim().length === 0 ? "your name" : null,
+          !isLikelyNigerianPhone(phoneClean) ? "a valid phone number" : null,
+          emailTrimmed !== "" && !emailValid ? "a complete email (or clear it)" : null,
+        ].filter((x): x is string => x !== null)
+      : [];
+  const blockersText =
+    deliveryBlockers.length > 1
+      ? `${deliveryBlockers.slice(0, -1).join(", ")} and ${deliveryBlockers[deliveryBlockers.length - 1]}`
+      : (deliveryBlockers[0] ?? "");
+
   if (!ready || !hydrated || (items.length === 0 && !redirectingRef.current)) {
     return <CheckoutSkeleton />;
   }
@@ -323,13 +341,18 @@ export default function CheckoutPage() {
               {errors.pin ? (
                 <p className="text-[12.5px] text-[var(--color-danger)]">{errors.pin}</p>
               ) : null}
-              <TextArea
-                label="Address & directions"
-                placeholder="Street, building, landmark, and anything that helps the rider find you"
-                rows={2}
+              {/* Typing an address looks it up and drops the pin there — the pin
+                  is what prices delivery and enables Pay. */}
+              <AddressSearchField
                 value={address}
+                onTextChange={setAddress}
+                hasPin={!!pin}
                 error={errors.address}
-                onChange={(e) => setAddress(e.target.value)}
+                onPick={(s) => {
+                  setPin({ lat: s.lat, lng: s.lng });
+                  setAddress(s.label);
+                  setErrors((prev) => ({ ...prev, pin: undefined, address: undefined }));
+                }}
               />
               {s?.maxDeliveryDistanceKm != null ? (
                 <p className="text-[12px] text-[var(--color-subtle)]">
@@ -510,6 +533,11 @@ export default function CheckoutPage() {
               >
                 {`Pay ${formatNaira(displayTotalKobo)}`}
               </Button>
+              {deliveryBlockers.length > 0 ? (
+                <p className="mt-3 text-center text-[12.5px] text-[var(--color-warning)]">
+                  To see your delivery fee and pay, add {blockersText}.
+                </p>
+              ) : null}
               {payError ? (
                 <p className="mt-3 text-[12.5px] text-[var(--color-danger)]">{payError}</p>
               ) : null}
