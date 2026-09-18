@@ -26,13 +26,16 @@ export function Wordmark({
   const inner = (
     <span
       className={cn(
-        "inline-flex items-center gap-[0.3em] font-logo uppercase leading-none tracking-[0.02em] text-[var(--color-text)]",
+        "inline-flex items-center gap-[0.3em] font-logo uppercase leading-none tracking-[0.025em] text-[var(--color-text)]",
+        // Drazel only ships one light weight — a thin same-colour outline
+        // thickens the strokes evenly at every size (0.035em ~ +1px at 27px).
+        "[-webkit-text-stroke:0.035em_currentColor]",
         sizeClass,
         className,
       )}
     >
       <span>Carnivore</span>
-      <span className="text-[var(--color-muted)]">Lagos</span>
+      <span>Lagos</span>
     </span>
   );
 
