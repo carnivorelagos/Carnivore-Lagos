@@ -52,10 +52,11 @@ export function Wordmark({
 
   if (!tagline) return mark;
 
-  // Logo, then the phrase on its side. The logo never shrinks; the phrase
-  // takes whatever room is left and wraps to two short lines rather than
-  // crowding the cart icon on a narrow phone, and drops out entirely below
-  // ~340px where there's no honest room for it.
+  // Logo, then the phrase on its side. The logo never shrinks and the phrase
+  // always stays on one straight line (11px medium fits beside the logo
+  // with room to spare from ~360px). Below ~350px there's no honest room
+  // for it next to the logo and cart, so it drops out rather than wrap
+  // or crowd the cart icon.
   return (
     <span className="flex min-w-0 items-center gap-2.5 sm:gap-3">
       <span className="shrink-0">{mark}</span>
@@ -64,7 +65,7 @@ export function Wordmark({
         // (#e4231d) is only ~4.0-4.3:1 against the near-black ground, a
         // touch under AA for small text. 7% white gets 4.8:1 on the header
         // and 4.5:1 on the footer while still reading as the brand red.
-        className="min-w-0 text-[12px] font-semibold leading-[1.15] tracking-[0.01em] text-[color-mix(in_oklab,var(--color-accent)_93%,white)] max-[339px]:hidden sm:text-[13px]"
+        className="min-w-0 whitespace-nowrap text-[11px] font-medium leading-none tracking-[0.01em] text-[color-mix(in_oklab,var(--color-accent)_93%,white)] max-[349px]:hidden sm:text-[12px]"
       >
         {BRAND.promise}
       </span>
