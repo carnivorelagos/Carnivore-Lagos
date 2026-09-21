@@ -84,20 +84,38 @@ export async function consumeContactMagicLink(
   const b = Buffer.from(row.tokenHash);
   if (a.length !== b.length || !timingSafeEqual(a, b)) throw invalid();
 
-  const email = row.email;
-  const targetId = openingDeviceProfileId;
-
   await prisma.contactVerification.update({
     where: { id: row.id },
     data: { consumedAt: new Date() },
   });
 
+  await linkDeviceToVerifiedEmail(openingDeviceProfileId, row.email, [row.deviceProfileId]);
+
+  return { deviceProfileId: openingDeviceProfileId, email: row.email };
+}
+
+/**
+ * Link `targetId` to a verified `email` and pull that email's history onto
+ * it. Every other profile carrying the same verified email (case-insensitive)
+ * - plus any `alsoMerge` ids, e.g. the device that requested a magic link -
+ * is merged in: its orders and any saved card move over, then it's deleted.
+ * Shared by the magic link and "Continue with Google", which prove the same
+ * thing (control of the email) by different means.
+ */
+export async function linkDeviceToVerifiedEmail(
+  targetId: string,
+  email: string,
+  alsoMerge: string[] = [],
+): Promise<{ mergedProfiles: number }> {
   const target = await prisma.deviceProfile.findUniqueOrThrow({ where: { id: targetId } });
 
   const others = await prisma.deviceProfile.findMany({
     where: {
       id: { not: targetId },
-      OR: [{ verifiedContactEmail: email }, { id: row.deviceProfileId }],
+      OR: [
+        { verifiedContactEmail: { equals: email, mode: "insensitive" } },
+        ...(alsoMerge.length > 0 ? [{ id: { in: alsoMerge } }] : []),
+      ],
     },
   });
 
@@ -131,10 +149,6 @@ export async function consumeContactMagicLink(
     },
   });
 
-  logger.info("contact_magic_link_consumed", {
-    deviceProfileId: targetId,
-    mergedProfiles: others.length,
-  });
-
-  return { deviceProfileId: targetId, email };
+  logger.info("device_linked_to_email", { deviceProfileId: targetId, mergedProfiles: others.length });
+  return { mergedProfiles: others.length };
 }

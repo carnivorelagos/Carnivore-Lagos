@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClockCounterClockwise, ShoppingBag } from "@phosphor-icons/react";
+import { ClockCounterClockwise, ShoppingBag, UserCircle } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useCartSheet } from "@/components/store/CartSheet";
@@ -54,6 +54,14 @@ export function StoreHeader() {
             className="hidden size-10 items-center justify-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)] hover:text-[var(--color-text)] sm:inline-flex"
           >
             <ClockCounterClockwise className="size-[22px]" />
+          </Link>
+
+          <Link
+            href="/account"
+            aria-label="Account"
+            className="hidden size-10 items-center justify-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-muted)_14%,transparent)] hover:text-[var(--color-text)] sm:inline-flex"
+          >
+            <UserCircle className="size-[22px]" />
           </Link>
 
           <button

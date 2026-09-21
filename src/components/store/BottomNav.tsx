@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClockCounterClockwise, ForkKnife, ShoppingBag } from "@phosphor-icons/react";
+import { ClockCounterClockwise, ForkKnife, ShoppingBag, UserCircle } from "@phosphor-icons/react";
 import { cn } from "@/lib/client/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useCartSheet } from "@/components/store/CartSheet";
@@ -56,6 +56,13 @@ export function BottomNav() {
           className="size-[22px]"
         />
         Orders
+      </Link>
+      <Link href="/account" className={itemClass(isActive("/account") || isActive("/login"))}>
+        <UserCircle
+          weight={isActive("/account") ? "fill" : "regular"}
+          className="size-[22px]"
+        />
+        Account
       </Link>
     </nav>
   );

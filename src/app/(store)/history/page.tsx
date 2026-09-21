@@ -16,8 +16,9 @@ import { TextField } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/feedback";
 import { HistorySkeleton } from "@/components/store/skeletons";
+import { GoogleButton } from "@/components/store/GoogleButton";
 
-function SecureBanner({ securedEmail }: { securedEmail: string | null }) {
+function SecureBanner({ securedEmail, googleEnabled }: { securedEmail: string | null; googleEnabled: boolean }) {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,6 +44,15 @@ function SecureBanner({ securedEmail }: { securedEmail: string | null }) {
   }
 
   return (
+    <>
+    {googleEnabled ? (
+      <div className="mb-4">
+        <GoogleButton next="/history" />
+        <p className="mt-3 text-[12px] uppercase tracking-[0.14em] text-[var(--color-subtle)]">
+          or get an email link
+        </p>
+      </div>
+    ) : null}
     <form
       className="flex flex-col gap-2 sm:flex-row"
       onSubmit={(e) => {
@@ -72,6 +82,7 @@ function SecureBanner({ securedEmail }: { securedEmail: string | null }) {
         Secure it
       </Button>
     </form>
+    </>
   );
 }
 
@@ -79,6 +90,7 @@ function HistoryView() {
   const router = useRouter();
   const search = useSearchParams();
   const secured = search.get("secured");
+  const signedIn = search.get("signin");
   const { toast } = useToast();
   const { add, clear } = useCart();
   const { data, status, reload } = useAsyncData(() => getHistory(), []);
@@ -125,10 +137,18 @@ function HistoryView() {
     <div className="shell gutter max-w-2xl py-8 animate-reveal sm:py-12">
       <h1 className="font-display text-3xl sm:text-4xl">Your orders</h1>
       <p className="mt-1 text-[13px] text-[var(--color-subtle)]">
-        Remembered on this device — no account.
+        {data.secured ? "Signed in - these follow you to any device." : "Remembered on this device - no account needed."}
       </p>
 
-      {secured === "1" ? (
+      {signedIn === "ok" ? (
+        <p className="mt-4 rounded-md border border-[color-mix(in_oklab,var(--color-success)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-success)_9%,transparent)] px-3 py-2 text-[13px] text-[var(--color-text)]">
+          You&apos;re signed in - your history is secured.
+        </p>
+      ) : signedIn === "failed" || signedIn === "cancelled" || signedIn === "unavailable" ? (
+        <p className="mt-4 rounded-md border border-[color-mix(in_oklab,var(--color-danger)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-danger)_9%,transparent)] px-3 py-2 text-[13px] text-[var(--color-danger)]">
+          Google sign-in didn&apos;t go through. Try again, or use the email link below.
+        </p>
+      ) : secured === "1" ? (
         <p className="mt-4 rounded-md border border-[color-mix(in_oklab,var(--color-success)_35%,transparent)] bg-[color-mix(in_oklab,var(--color-success)_9%,transparent)] px-3 py-2 text-[13px] text-[var(--color-text)]">
           Email confirmed — your history is secured.
         </p>
@@ -153,7 +173,7 @@ function HistoryView() {
         <p className="mb-3 mt-1 text-[13px] text-[var(--color-muted)]">
           One email link makes this history — and any saved card — recoverable from any device.
         </p>
-        <SecureBanner securedEmail={data.securedEmail} />
+        <SecureBanner securedEmail={data.securedEmail} googleEnabled={data.googleEnabled} />
       </section>
 
       {data.orders.length === 0 ? (

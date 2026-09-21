@@ -207,6 +207,8 @@ export type DeviceHistory = {
   savedCard: { brand: string | null; last4: string | null } | null;
   secured: boolean;
   securedEmail: string | null;
+  /** Whether "Continue with Google" is configured on the server. */
+  googleEnabled: boolean;
 };
 
 export type ReorderLine = {

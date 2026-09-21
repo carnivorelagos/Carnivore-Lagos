@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, withApiHandler } from "@/lib/api-response";
 import { getDeviceProfile } from "@/lib/auth/deviceProfile";
+import { isGoogleConfigured } from "@/lib/auth/google";
 
 /**
  * This device's order history + one-tap-reorder feed (amendment 2). Keyed
@@ -11,8 +12,9 @@ import { getDeviceProfile } from "@/lib/auth/deviceProfile";
  */
 export const GET = withApiHandler(async (req: NextRequest) => {
   const device = await getDeviceProfile(req);
+  const googleEnabled = isGoogleConfigured();
   if (!device) {
-    return ok({ orders: [], savedCard: null, secured: false, securedEmail: null });
+    return ok({ orders: [], savedCard: null, secured: false, securedEmail: null, googleEnabled });
   }
 
   const orders = await prisma.order.findMany({
@@ -37,5 +39,6 @@ export const GET = withApiHandler(async (req: NextRequest) => {
       : null,
     secured: !!device.verifiedContactEmail,
     securedEmail: device.verifiedContactEmail,
+    googleEnabled,
   });
 });

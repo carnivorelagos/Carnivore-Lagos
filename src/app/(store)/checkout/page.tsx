@@ -9,6 +9,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import {
   createOrder,
+  getHistory,
   getPublicSettings,
   getQuote,
   initializePayment,
@@ -43,7 +44,12 @@ export default function CheckoutPage() {
   const [fulfillment, setFulfillment] = useState<FulfillmentType | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  // Signed-in (Google / email-link) customers get their verified email
+  // filled in; guests type one or leave it blank. Derived rather than
+  // copied into state, so it needs no effect.
+  const history = useAsyncData(() => getHistory(), []);
+  const [emailInput, setEmail] = useState("");
+  const email = emailInput || (history.data?.securedEmail ?? "");
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState<LatLng | null>(null);
   const [notes, setNotes] = useState("");
@@ -412,6 +418,18 @@ export default function CheckoutPage() {
               onChange={(e) => setEmail(e.target.value)}
               hint="Needed to pay by card and to save this order to your history."
             />
+            {history.data && !history.data.secured && history.data.googleEnabled ? (
+              <p className="text-[13px] text-[var(--color-muted)]">
+                Have an account?{" "}
+                <a
+                  href={`/api/auth/google/start?next=${encodeURIComponent("/checkout")}`}
+                  className="font-semibold text-[var(--color-text)] underline underline-offset-4 hover:text-[var(--color-accent)]"
+                >
+                  Continue with Google
+                </a>{" "}
+                to fill in your email and keep your history. Or just carry on as a guest.
+              </p>
+            ) : null}
           </section>
 
           {/* Notes */}

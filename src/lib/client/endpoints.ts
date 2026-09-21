@@ -92,6 +92,8 @@ export const getHistory = () => apiRead<DeviceHistory>("/api/history");
 export const reorder = (trackingSlug: string) =>
   apiFetch<ReorderResult>("/api/history/reorder", { body: { trackingSlug } });
 
+export const deviceSignOut = () => apiFetch<{ signedOut: boolean }>("/api/auth/device/logout", { body: {} });
+
 export const secureHistory = (email: string) =>
   apiFetch<{ sent: boolean }>("/api/history/secure", { body: { email } });
 
