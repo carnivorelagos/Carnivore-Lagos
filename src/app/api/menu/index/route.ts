@@ -18,7 +18,11 @@ const readMenuIndex = cachedRead(
   () =>
     prisma.product.findMany({
       where: { isActive: true, isAvailable: true },
-      orderBy: [{ categoryId: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+      // category.sortOrder, not the raw categoryId — otherwise this sorts
+      // by an opaque UUID instead of the intended category order (Grill
+      // first, etc). Search re-ranks by relevance regardless, but this
+      // keeps the underlying data consistent with /api/products.
+      orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }, { createdAt: "desc" }],
       select: {
         id: true,
         name: true,

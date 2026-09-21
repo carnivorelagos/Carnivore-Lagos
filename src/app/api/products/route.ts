@@ -40,7 +40,11 @@ function readProductPage(categoryId: string | undefined, page: number, limit: nu
       const [items, total] = await Promise.all([
         prisma.product.findMany({
           where,
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+          // category.sortOrder first — this is what makes "All" (no
+          // categoryId filter) list Grill's products before every other
+          // category's, matching the category tab order (Grill = 1). A
+          // no-op when categoryId IS set: every row shares one category.
+          orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }, { createdAt: "desc" }],
           skip: (page - 1) * limit,
           take: limit,
           select: {
