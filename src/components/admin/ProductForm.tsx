@@ -39,6 +39,7 @@ export function ProductForm({
   );
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [isAvailable, setIsAvailable] = useState(initial?.isAvailable ?? true);
+  const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
   const [tagsInput, setTagsInput] = useState((initial?.tags ?? []).join(", "));
 
   const [busy, setBusy] = useState(false);
@@ -57,6 +58,8 @@ export function ProductForm({
     const priceKobo = nairaInputToKobo(priceNaira);
     if (priceKobo === null || priceKobo < 1) local.priceKobo = "Enter a price in Naira, e.g. 8000.";
     if (!categoryId) local.categoryId = "Choose a category.";
+    const sortOrderNum = Number(sortOrder);
+    if (!Number.isInteger(sortOrderNum)) local.sortOrder = "Enter a whole number.";
     if (Object.keys(local).length) {
       setErrs(local);
       return;
@@ -78,6 +81,7 @@ export function ProductForm({
       categoryId,
       isActive,
       isAvailable,
+      sortOrder: sortOrderNum,
       tags,
     };
 
@@ -145,6 +149,15 @@ export function ProductForm({
           )}
         </SelectField>
       </div>
+
+      <TextField
+        label="Display order"
+        inputMode="numeric"
+        value={sortOrder}
+        error={errs.sortOrder}
+        hint="Lower numbers show first within this category. Ties fall back to newest-first."
+        onChange={(e) => setSortOrder(e.target.value)}
+      />
 
       <TextField
         label="Tags"

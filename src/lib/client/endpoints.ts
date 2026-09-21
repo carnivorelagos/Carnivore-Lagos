@@ -253,6 +253,7 @@ export type AdminProductInput = {
   imagePublicId?: string;
   isActive?: boolean;
   isAvailable?: boolean;
+  sortOrder?: number;
   tags?: string[];
 };
 

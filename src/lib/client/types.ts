@@ -371,6 +371,7 @@ export type AdminProduct = {
   imagePublicId: string | null;
   isActive: boolean;
   isAvailable: boolean;
+  sortOrder: number;
   tags: string[];
   createdAt: string;
   updatedAt: string;

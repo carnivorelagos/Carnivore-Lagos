@@ -40,7 +40,7 @@ function readProductPage(categoryId: string | undefined, page: number, limit: nu
       const [items, total] = await Promise.all([
         prisma.product.findMany({
           where,
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
           skip: (page - 1) * limit,
           take: limit,
           select: {

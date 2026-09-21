@@ -18,7 +18,7 @@ const readMenuIndex = cachedRead(
   () =>
     prisma.product.findMany({
       where: { isActive: true, isAvailable: true },
-      orderBy: [{ categoryId: "asc" }, { createdAt: "desc" }],
+      orderBy: [{ categoryId: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
       select: {
         id: true,
         name: true,

@@ -115,4 +115,6 @@ export function runSearch(rawQuery: string, items: MenuIndexItem[]): SearchOutco
 }
 
 /** Suggested chips under the search bar. */
-export const POPULAR_SEARCHES = ["Chicken", "Suya", "Spicy", "Seafood", "Rice", "Sharing"];
+// Exact product names, not loose phrases — guarantees an exact-layer hit
+// (no fuzzy/synonym fallback needed) when a chip is tapped.
+export const POPULAR_SEARCHES = ["Carnivore Platter", "Steak", "Tomahawk", "Giant Prawn Suya"];

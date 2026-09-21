@@ -166,6 +166,11 @@ model Product {
   imagePublicId String?
   isActive      Boolean     @default(true)
   isAvailable   Boolean     @default(true)
+  // Manual display order within a category (ascending), same idea as
+  // Category.sortOrder. Defaults to 0 for every existing product, so
+  // nothing's order changes until it's explicitly set; ties fall back to
+  // createdAt desc, the previous (only) ordering.
+  sortOrder     Int         @default(0)
   // Free-form attribute tags used by the smart search / concierge
   // ("spicy", "meaty", "seafood", "shareable", "light", ...). Admin-set;
   // the concierge is constrained to these + real products, never invents.
@@ -174,7 +179,7 @@ model Product {
   updatedAt     DateTime    @updatedAt
   orderItems    OrderItem[]
 
-  @@index([categoryId])
+  @@index([categoryId, sortOrder])
   @@index([isActive, isAvailable])
 }
 

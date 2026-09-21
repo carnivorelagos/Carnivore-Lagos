@@ -108,6 +108,9 @@ export const adminProductCreateSchema = z.object({
   imagePublicId: z.string().max(300).optional(),
   isActive: z.boolean().default(true),
   isAvailable: z.boolean().default(true),
+  // Manual display order within its category, ascending. Same convention
+  // as Category.sortOrder.
+  sortOrder: z.number().int().default(0),
   // Lowercased, de-duped, capped — attribute tags for search / concierge.
   tags: z
     .array(z.string().trim().toLowerCase().min(1).max(30))

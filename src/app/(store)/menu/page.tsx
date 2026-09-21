@@ -97,9 +97,13 @@ function MenuBrowser() {
           <div className="w-full min-w-0">
             <SmartSearch onActiveChange={setSearching} />
           </div>
+          {/* "Help me choose" removed per client request — not currently
+              rendered. Left in place (commented out, not deleted) in case
+              it's wanted back later.
           <div className="shrink-0">
             <HelpMeChoose />
           </div>
+          */}
         </div>
 
         {searching ? null : (
