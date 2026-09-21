@@ -165,6 +165,10 @@ export const adminOrderListQuerySchema = paginationSchema.extend({
   status: z.enum(ORDER_STATUS_VALUES).optional(),
 });
 
+export const adminBulkDeleteOrdersSchema = z.object({
+  orderIds: z.array(uuidSchema).min(1).max(30),
+});
+
 export const adminProductListQuerySchema = paginationSchema.extend({
   // Matched against the product name, case-insensitive, anywhere in the
   // string — the admin product search field.

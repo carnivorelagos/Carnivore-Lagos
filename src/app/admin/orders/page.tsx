@@ -3,8 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CaretRight } from "@phosphor-icons/react";
-import { adminBulkOrderStatus, adminGetOrders } from "@/lib/client/endpoints";
+import { CaretRight, Trash } from "@phosphor-icons/react";
+import {
+  adminBulkDeleteOrders,
+  adminBulkOrderStatus,
+  adminDeleteOrder,
+  adminGetOrders,
+} from "@/lib/client/endpoints";
 import { errorMessage } from "@/lib/client/errors";
 import { cn } from "@/lib/client/cn";
 import { ORDER_STATUSES } from "@/lib/client/types";
@@ -17,6 +22,7 @@ import { PageHeader, TableWrap, thClass, tdClass, SkeletonRows, EmptyRow } from 
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Money";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Overlay";
 import { ErrorState } from "@/components/ui/feedback";
 
 const PAGE_SIZE = 20;
@@ -53,6 +59,9 @@ function OrdersTable() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  // Ids pending a delete confirmation — one for a single row, several for
+  // "delete selected". null means the dialog is closed.
+  const [toDelete, setToDelete] = useState<string[] | null>(null);
 
   // Live-refresh when a "new paid order" Web Push lands while this board
   // is open (the service worker relays it — see public/sw.js).
@@ -90,7 +99,9 @@ function OrdersTable() {
       return n;
     });
 
-  const selectableIds = useMemo(() => rows.filter((r) => forwardStep(r)).map((r) => r.id), [rows]);
+  // Every row is selectable now — selection is also used to bulk-delete,
+  // which applies regardless of whether an order can still advance status.
+  const selectableIds = useMemo(() => rows.map((r) => r.id), [rows]);
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
 
   const runBulk = async (target?: OrderStatus) => {
@@ -129,6 +140,36 @@ function OrdersTable() {
       await reload(true);
     } catch (e) {
       toast({ tone: "danger", title: "Update failed", description: errorMessage(e) });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    const ids = toDelete;
+    if (!ids || ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      if (ids.length === 1) {
+        await adminDeleteOrder(ids[0]);
+        toast({ tone: "success", title: "Order deleted" });
+      } else {
+        const res = await adminBulkDeleteOrders(ids);
+        if (res.failed === 0) {
+          toast({ tone: "success", title: `${res.deleted} order${res.deleted === 1 ? "" : "s"} deleted` });
+        } else {
+          toast({
+            tone: res.deleted > 0 ? "warning" : "danger",
+            title: `${res.deleted} deleted, ${res.failed} skipped`,
+            description: res.results.find((r) => !r.ok)?.error,
+          });
+        }
+      }
+      setSelected(new Set());
+      setToDelete(null);
+      await reload(true);
+    } catch (e) {
+      toast({ tone: "danger", title: "Couldn't delete", description: errorMessage(e) });
     } finally {
       setBulkBusy(false);
     }
@@ -188,6 +229,15 @@ function OrdersTable() {
               {TRANSITION_VERB[t]}
             </Button>
           ))}
+          <Button
+            size="sm"
+            variant="danger"
+            loading={bulkBusy}
+            icon={<Trash className="size-3.5" aria-hidden />}
+            onClick={() => setToDelete([...selected])}
+          >
+            Delete
+          </Button>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
@@ -242,7 +292,6 @@ function OrdersTable() {
                         <input
                           type="checkbox"
                           aria-label={`Select ${o.orderNumber}`}
-                          disabled={!step}
                           checked={selected.has(o.id)}
                           onChange={() => toggle(o.id)}
                         />
@@ -276,19 +325,29 @@ function OrdersTable() {
                         {formatDateTime(o.createdAt)}
                       </td>
                       <td className={cn(tdClass, "text-right")}>
-                        {step ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            loading={bulkBusy}
-                            onClick={() => void advanceOne(o)}
+                        <div className="inline-flex items-center gap-1.5">
+                          {step ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              loading={bulkBusy}
+                              onClick={() => void advanceOne(o)}
+                            >
+                              {ORDER_STATUS_LABEL[step]}
+                              <CaretRight className="size-3.5" aria-hidden />
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] text-[var(--color-subtle)]">—</span>
+                          )}
+                          <button
+                            type="button"
+                            aria-label={`Delete ${o.orderNumber}`}
+                            onClick={() => setToDelete([o.id])}
+                            className="rounded-md p-1.5 text-[var(--color-subtle)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-danger)_12%,transparent)] hover:text-[var(--color-danger)]"
                           >
-                            {ORDER_STATUS_LABEL[step]}
-                            <CaretRight className="size-3.5" aria-hidden />
-                          </Button>
-                        ) : (
-                          <span className="text-[11px] text-[var(--color-subtle)]">—</span>
-                        )}
+                            <Trash className="size-4" aria-hidden />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -322,6 +381,27 @@ function OrdersTable() {
           ) : null}
         </>
       )}
+
+      <Dialog
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        title={toDelete && toDelete.length > 1 ? `Delete ${toDelete.length} orders?` : "Delete this order?"}
+        description="This removes it from your dashboard — the order record and its payment history are kept, not erased."
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" loading={bulkBusy} onClick={() => void confirmDelete()}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-[var(--color-muted)]">
+          You won&apos;t see {toDelete && toDelete.length > 1 ? "these orders" : "it"} here again.
+        </p>
+      </Dialog>
     </>
   );
 }

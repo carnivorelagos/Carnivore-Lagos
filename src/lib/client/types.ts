@@ -410,6 +410,13 @@ export type BulkStatusResult = {
   failed: number;
 };
 
+export type BulkDeleteRowResult = { id: string; ok: boolean; error?: string };
+export type BulkDeleteResult = {
+  results: BulkDeleteRowResult[];
+  deleted: number;
+  failed: number;
+};
+
 export type ImageSignature = {
   timestamp: number;
   signature: string;

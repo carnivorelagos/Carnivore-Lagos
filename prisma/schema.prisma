@@ -354,10 +354,21 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Admin "delete" (soft) — Payment.order is onDelete:Restrict by design
+  // (a paid order's financial record is never destroyed), so a real hard
+  // delete is blocked at the database level for any order that ever
+  // reached payment anyway. Setting this hides the order from the admin
+  // dashboard's lists/detail/counts; every other reader (customer
+  // tracking/history, the payment reconciler) is unaffected — deleting a
+  // stray/test order from the admin's own view must never stop a real
+  // payment from being reconciled or a real customer from tracking it.
+  deletedAt DateTime?
+
   @@index([status])
   @@index([createdAt])
   @@index([customerId])
   @@index([deviceProfileId])
+  @@index([deletedAt])
 }
 
 model OrderItem {

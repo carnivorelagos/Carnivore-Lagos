@@ -14,7 +14,10 @@ export const GET = withApiHandler(async (req: NextRequest) => {
     status: searchParams.get("status") ?? undefined,
   });
 
-  const where = status ? { status } : {};
+  // deletedAt: null — an admin "delete" only ever hides an order from the
+  // admin dashboard (see the comment on Order.deletedAt); it's excluded
+  // here and nowhere else.
+  const where = { deletedAt: null, ...(status ? { status } : {}) };
 
   const [items, total] = await Promise.all([
     prisma.order.findMany({

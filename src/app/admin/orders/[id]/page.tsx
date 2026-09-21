@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useParams } from "next/navigation";
-import { adminGetOrder, adminSetOrderStatus } from "@/lib/client/endpoints";
+import { useParams, useRouter } from "next/navigation";
+import { Trash } from "@phosphor-icons/react";
+import { adminDeleteOrder, adminGetOrder, adminSetOrderStatus } from "@/lib/client/endpoints";
 import { errorCode, errorMessage } from "@/lib/client/errors";
 import { isApiError } from "@/lib/client/api";
 import { allowedNextStatuses, TRANSITION_VERB } from "@/lib/client/orderFlow";
@@ -34,6 +35,7 @@ function DefRow({ label, children }: { label: string; children: React.ReactNode 
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params.id;
   const { toast } = useToast();
   const { data: order, status, error, reload, setData } = useAdminData(
@@ -43,6 +45,19 @@ export default function AdminOrderDetailPage() {
 
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [working, setWorking] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const deleteOrder = useCallback(async () => {
+    setWorking(true);
+    try {
+      await adminDeleteOrder(id);
+      toast({ tone: "success", title: "Order deleted" });
+      router.replace("/admin/orders");
+    } catch (e) {
+      toast({ tone: "danger", title: "Couldn't delete", description: errorMessage(e) });
+      setWorking(false);
+    }
+  }, [id, router, toast]);
 
   const applyStatus = useCallback(
     async (next: OrderStatus) => {
@@ -105,7 +120,19 @@ export default function AdminOrderDetailPage() {
         description={`Placed ${formatDateTime(order.createdAt)}`}
         backHref="/admin/orders"
         backLabel="All orders"
-        actions={<OrderStatusBadge status={order.status} />}
+        actions={
+          <div className="flex items-center gap-3">
+            <OrderStatusBadge status={order.status} />
+            <Button
+              size="sm"
+              variant="quiet"
+              icon={<Trash className="size-3.5" aria-hidden />}
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem] lg:items-start">
@@ -245,7 +272,26 @@ export default function AdminOrderDetailPage() {
           </>
         }
       >
-        <p className="text-[13px] text-muted">This can't be undone from here.</p>
+        <p className="text-[13px] text-muted">This can&apos;t be undone from here.</p>
+      </Dialog>
+
+      <Dialog
+        open={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        title="Delete this order?"
+        description="This removes it from your dashboard — the order record and its payment history are kept, not erased."
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setConfirmingDelete(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" loading={working} onClick={() => void deleteOrder()}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-muted">You won&apos;t see it here again.</p>
       </Dialog>
     </>
   );

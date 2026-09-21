@@ -122,7 +122,11 @@ function Results({
           {outcome.items.length} match{outcome.items.length === 1 ? "" : "es"} for “{query}”
         </p>
         <Grid items={outcome.items} />
+        {/* AI concierge prompt disabled per client request (not needed for
+            now) — see the ConciergePanel/ConciergePrompt definitions above
+            for how to bring it back.
         <ConciergePrompt onAskConcierge={onAskConcierge} />
+        */}
       </div>
     );
   }
@@ -142,7 +146,7 @@ function Results({
           ?
         </p>
         <Grid items={outcome.items} />
-        <ConciergePrompt onAskConcierge={onAskConcierge} />
+        {/* <ConciergePrompt onAskConcierge={onAskConcierge} /> */}
       </div>
     );
   }
@@ -163,7 +167,7 @@ function Results({
           </div>
         </>
       ) : null}
-      <ConciergePrompt onAskConcierge={onAskConcierge} emphatic />
+      {/* <ConciergePrompt onAskConcierge={onAskConcierge} emphatic /> */}
     </div>
   );
 }
@@ -242,7 +246,11 @@ export function SmartSearch({ onActiveChange }: { onActiveChange?: (active: bool
         />
         <input
           ref={inputRef}
-          type="search"
+          // "text", not "search" — type="search" adds the browser's own
+          // native clear button on top of the custom one below, showing
+          // two X icons in the same corner.
+          type="text"
+          enterKeyHint="search"
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           placeholder="What are you craving?"
@@ -284,9 +292,11 @@ export function SmartSearch({ onActiveChange }: { onActiveChange?: (active: bool
         </div>
       ) : null}
 
-      {concierge && query.length > 0 ? (
-        <ConciergePanel query={query} onDismiss={() => setConcierge(false)} />
-      ) : outcome && outcome.kind !== "empty" ? (
+      {/* AI concierge disabled per client request (not needed for now) —
+          was: `concierge && query.length > 0 ? <ConciergePanel .../> : `
+          gating the Results branch below. See ConciergePanel/
+          ConciergePrompt above to bring it back. */}
+      {outcome && outcome.kind !== "empty" ? (
         <Results
           outcome={outcome}
           query={query}

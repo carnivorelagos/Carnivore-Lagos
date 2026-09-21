@@ -18,9 +18,9 @@ export function Wordmark({
   href?: string | null;
 }) {
   const sizeClass = {
-    sm: "text-[22px]",
-    md: "text-[27px]",
-    lg: "text-[42px]",
+    sm: "text-[26px]",
+    md: "text-[34px]",
+    lg: "text-[52px]",
   }[size];
 
   const inner = (
@@ -28,8 +28,8 @@ export function Wordmark({
       className={cn(
         "inline-flex items-center gap-[0.3em] font-logo uppercase leading-none tracking-[0.025em] text-[var(--color-text)]",
         // Drazel only ships one light weight — a thin same-colour outline
-        // thickens the strokes evenly at every size (0.035em ~ +1px at 27px).
-        "[-webkit-text-stroke:0.035em_currentColor]",
+        // thickens the strokes evenly at every size.
+        "[-webkit-text-stroke:0.045em_currentColor]",
         sizeClass,
         className,
       )}

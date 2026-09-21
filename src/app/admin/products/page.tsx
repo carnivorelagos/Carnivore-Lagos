@@ -102,7 +102,11 @@ export default function AdminProductsPage() {
           aria-hidden
         />
         <input
-          type="search"
+          // "text", not "search" — type="search" adds the browser's own
+          // native clear button on top of the custom one right below,
+          // showing two X icons in the same corner.
+          type="text"
+          enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search products by name…"

@@ -10,6 +10,7 @@ import type {
   AdminProduct,
   AdminSettings,
   AssistResult,
+  BulkDeleteResult,
   BulkStatusResult,
   Category,
   MenuIndexItem,
@@ -204,6 +205,16 @@ export const adminBulkOrderStatus = (orderIds: string[], target?: OrderStatus) =
   apiFetch<BulkStatusResult>("/api/admin/orders/bulk-status", {
     method: "PATCH",
     body: target ? { orderIds, target } : { orderIds },
+  });
+
+/** Soft-delete — hides the order from the admin dashboard, keeps the record. */
+export const adminDeleteOrder = (id: string) =>
+  apiFetch<{ deleted: boolean }>(`/api/admin/orders/${id}`, { method: "DELETE" });
+
+export const adminBulkDeleteOrders = (orderIds: string[]) =>
+  apiFetch<BulkDeleteResult>("/api/admin/orders/bulk-delete", {
+    method: "DELETE",
+    body: { orderIds },
   });
 
 export const adminGetProducts = (params?: { page?: number; limit?: number; q?: string }) =>
