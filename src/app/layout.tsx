@@ -52,13 +52,14 @@ export const metadata: Metadata = {
     default: "Carnivore Lagos - Suya, grills & pepper soup, delivered",
     template: "%s · Carnivore Lagos",
   },
+  // The text shown under the title when the link is shared / in search results.
   description:
-    "A Lagos grill house. Order half-chicken suya, asun, tomahawk, pepper soup and more for pickup or delivery.",
+    "Grill House, Bar, Bistro. Place your order now. Delivery and pickup available.",
   applicationName: "Carnivore Lagos",
   openGraph: {
     title: "Carnivore Lagos",
     description:
-      "A Lagos grill house. Order suya, grills and pepper soup for pickup or delivery.",
+      "Grill House, Bar, Bistro. Place your order now. Delivery and pickup available.",
     type: "website",
   },
   robots: { index: true, follow: true },

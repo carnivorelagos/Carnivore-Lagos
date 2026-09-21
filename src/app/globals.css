@@ -255,10 +255,13 @@
     background-size: 140px 140px;
   }
 
-  /* Edge-fade mask for horizontal scrollers (category rail, etc). */
+  /* Fade on the RIGHT edge only of horizontal scrollers (category rail),
+     as a "there's more this way" hint. The left edge used to fade too,
+     which darkened the first pill ("All") and read as a black gradient
+     covering it — removed per client request. */
   .edge-fade {
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
-    mask-image: linear-gradient(to right, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent);
   }
 
   /* Fade+rise used for route-level content and scroll reveals. */
