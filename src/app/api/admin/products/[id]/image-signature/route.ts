@@ -15,7 +15,10 @@ export const POST = withApiHandler(async (req: NextRequest, ctx) => {
   if (!product) throw notFound("Product");
 
   const { folder } = imageSignatureRequestSchema.parse(await req.json().catch(() => ({})));
-  const signature = buildUploadSignature(folder);
+  // Fixed to this product's own id — never taken from the client — so a
+  // re-upload overwrites this product's existing Cloudinary asset instead
+  // of leaving it behind as an orphan under a fresh random id.
+  const signature = buildUploadSignature(folder, productId);
 
   return ok(signature);
 });

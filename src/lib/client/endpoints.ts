@@ -206,7 +206,7 @@ export const adminBulkOrderStatus = (orderIds: string[], target?: OrderStatus) =
     body: target ? { orderIds, target } : { orderIds },
   });
 
-export const adminGetProducts = (params?: { page?: number; limit?: number }) =>
+export const adminGetProducts = (params?: { page?: number; limit?: number; q?: string }) =>
   apiRead<Paginated<AdminProduct>>("/api/admin/products", { query: params });
 
 export const adminGetPaymentIssues = (params?: {
@@ -302,9 +302,15 @@ export async function uploadToCloudinary(
   form.append("api_key", sig.apiKey);
   form.append("timestamp", String(sig.timestamp));
   form.append("folder", sig.folder);
-  // Must match exactly what the server signed (buildUploadSignature) — an
-  // incoming transformation, so Cloudinary caps/compresses the file before
-  // storing it rather than keeping the raw upload at full size.
+  // Must match exactly what the server signed (buildUploadSignature): a
+  // fixed public_id (this product's own id, so the upload overwrites its
+  // existing asset instead of Cloudinary minting a new orphaned one), the
+  // matching overwrite/invalidate flags, and an incoming transformation so
+  // Cloudinary caps/compresses the file before storing it rather than
+  // keeping the raw upload at full size.
+  form.append("public_id", sig.publicId);
+  form.append("overwrite", "true");
+  form.append("invalidate", "true");
   form.append("transformation", sig.transformation);
   form.append("signature", sig.signature);
 

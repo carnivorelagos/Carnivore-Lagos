@@ -5,6 +5,8 @@ import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { adminProductUpdateSchema, uuidSchema } from "@/lib/validation";
 import { notFound } from "@/lib/errors";
 import { revalidateCatalog } from "@/lib/cache";
+import { deleteAsset } from "@/lib/cloudinary";
+import { logger } from "@/lib/logger";
 
 export const PATCH = withApiHandler(async (req: NextRequest, ctx) => {
   await requireAdmin(req);
@@ -17,6 +19,28 @@ export const PATCH = withApiHandler(async (req: NextRequest, ctx) => {
 
   const product = await prisma.product.update({ where: { id: productId }, data });
   revalidateCatalog("products");
+
+  // Clean up the replaced photo on Cloudinary, if this update swapped one
+  // in. The new upload is already fixed to `products/<productId>`
+  // (buildUploadSignature) with overwrite:true, so old and new only ever
+  // differ the first time a product's image moves onto that scheme (from
+  // an old random-id or slug-based asset) — after that they're the same
+  // asset and there is nothing to delete. Best-effort: never lets a
+  // Cloudinary hiccup fail a save that already succeeded.
+  if (
+    data.imagePublicId &&
+    existing.imagePublicId &&
+    existing.imagePublicId !== data.imagePublicId
+  ) {
+    await deleteAsset(existing.imagePublicId).catch((err) => {
+      logger.warn("cloudinary_stale_asset_cleanup_failed", {
+        productId,
+        publicId: existing.imagePublicId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+
   return ok(product);
 });
 

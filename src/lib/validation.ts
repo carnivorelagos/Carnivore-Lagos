@@ -165,6 +165,12 @@ export const adminOrderListQuerySchema = paginationSchema.extend({
   status: z.enum(ORDER_STATUS_VALUES).optional(),
 });
 
+export const adminProductListQuerySchema = paginationSchema.extend({
+  // Matched against the product name, case-insensitive, anywhere in the
+  // string — the admin product search field.
+  q: z.string().trim().min(1).max(100).optional(),
+});
+
 export const PAYMENT_ISSUE_STATUS_VALUES = ["OPEN", "RESOLVED", "IGNORED"] as const;
 
 export const adminPaymentIssueListQuerySchema = paginationSchema.extend({

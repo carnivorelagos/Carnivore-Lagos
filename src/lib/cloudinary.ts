@@ -22,33 +22,79 @@ const ALLOWED_FOLDERS = new Set(["products"]);
 // comment below).
 const UPLOAD_TRANSFORMATION = "w_1600,h_1600,c_limit,q_auto:good";
 
-export function buildUploadSignature(folder: string): {
-  timestamp: number;
-  signature: string;
-  apiKey: string;
-  cloudName: string;
-  folder: string;
-  transformation: string;
-} {
-  if (!ALLOWED_FOLDERS.has(folder)) {
-    throw new Error(`Upload folder "${folder}" is not allowed.`);
-  }
-
+function credentials() {
   const apiKey = process.env.CLOUDINARY_API_KEY!;
   const apiSecret = process.env.CLOUDINARY_API_SECRET!;
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME!;
   if (!apiKey || !apiSecret || !cloudName) {
     throw new Error("Cloudinary environment variables are not fully configured.");
   }
+  return { apiKey, apiSecret, cloudName };
+}
+
+/**
+ * `publicId` is fixed to the product's own id (never taken from the
+ * client) and signed along with `overwrite`/`invalidate` — every re-upload
+ * for a product lands at the exact same Cloudinary asset instead of
+ * Cloudinary auto-generating a fresh random id each time, which was
+ * silently orphaning the old file on every photo change (still cost
+ * storage, and cluttered the media library with dead duplicates). Scoping
+ * `publicId` server-side from the product id also closes off a client from
+ * ever overwriting some *other* product's image.
+ */
+export function buildUploadSignature(
+  folder: string,
+  publicId: string,
+): {
+  timestamp: number;
+  signature: string;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
+  publicId: string;
+  transformation: string;
+} {
+  if (!ALLOWED_FOLDERS.has(folder)) {
+    throw new Error(`Upload folder "${folder}" is not allowed.`);
+  }
+
+  const { apiKey, apiSecret, cloudName } = credentials();
 
   const timestamp = Math.floor(Date.now() / 1000);
   // Every param that affects the resource must be signed, and the client
   // must send back this exact same value — Cloudinary recomputes the
   // signature from what actually arrives and rejects a mismatch.
   const signature = cloudinary.utils.api_sign_request(
-    { timestamp, folder, transformation: UPLOAD_TRANSFORMATION },
+    {
+      timestamp,
+      folder,
+      public_id: publicId,
+      overwrite: true,
+      invalidate: true,
+      transformation: UPLOAD_TRANSFORMATION,
+    },
     apiSecret,
   );
 
-  return { timestamp, signature, apiKey, cloudName, folder, transformation: UPLOAD_TRANSFORMATION };
+  return {
+    timestamp,
+    signature,
+    apiKey,
+    cloudName,
+    folder,
+    publicId,
+    transformation: UPLOAD_TRANSFORMATION,
+  };
+}
+
+/**
+ * Best-effort cleanup of a replaced product photo. Called after a product
+ * update swaps in a new `imagePublicId` — never blocks or fails the save
+ * itself (a stray orphaned asset is a far smaller problem than losing a
+ * successful edit), just logged if it doesn't work out.
+ */
+export async function deleteAsset(publicId: string): Promise<void> {
+  const { apiKey, apiSecret, cloudName } = credentials();
+  cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
+  await cloudinary.uploader.destroy(publicId, { invalidate: true });
 }

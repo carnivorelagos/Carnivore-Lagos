@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ImageSquare, Plus } from "@phosphor-icons/react";
+import { ImageSquare, MagnifyingGlass, Plus, X } from "@phosphor-icons/react";
 import {
   adminDeactivateProduct,
   adminGetCategories,
@@ -32,10 +32,28 @@ const PAGE_SIZE = 50;
 export default function AdminProductsPage() {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
-  const products = useAdminData(() => adminGetProducts({ page, limit: PAGE_SIZE }), [page]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const products = useAdminData(
+    () => adminGetProducts({ page, limit: PAGE_SIZE, q: debouncedSearch || undefined }),
+    [page, debouncedSearch],
+  );
   const categories = useAdminData(() => adminGetCategories(), []);
   const [toDeactivate, setToDeactivate] = useState<AdminProduct | null>(null);
   const [working, setWorking] = useState(false);
+
+  // Debounce the search box, and hop back to page 1 once it settles —
+  // page 3 of an old search is never a page that still makes sense once
+  // the filter itself changes. Both updates happen inside the timeout
+  // callback (not synchronously in the effect body) so they only ever
+  // fire once per pause in typing, not on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const categoryName = useMemo(() => {
     const map = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
@@ -64,13 +82,44 @@ export default function AdminProductsPage() {
     <>
       <PageHeader
         title="Products"
-        description={total ? `${total} in the catalogue (including inactive)` : undefined}
+        description={
+          total
+            ? debouncedSearch
+              ? `${total} matching "${debouncedSearch}"`
+              : `${total} in the catalogue (including inactive)`
+            : undefined
+        }
         actions={
           <Link href="/admin/products/new" className={buttonVariants({ size: "sm" })}>
             <Plus className="size-4" aria-hidden /> New product
           </Link>
         }
       />
+
+      <div className="relative mb-4 max-w-sm">
+        <MagnifyingGlass
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search products by name…"
+          aria-label="Search products by name"
+          className="h-9 w-full rounded-md border border-line-strong bg-surface pl-9 pr-8 text-[13px] text-text outline-none transition-colors focus:border-accent"
+        />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            aria-label="Clear search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-subtle hover:text-text"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        ) : null}
+      </div>
 
       {products.status === "error" ? (
         <ErrorState description={errorMessage(products.error)} onRetry={() => products.reload()} />
@@ -90,7 +139,11 @@ export default function AdminProductsPage() {
               {products.status === "loading" ? (
                 <SkeletonRows rows={8} cols={5} />
               ) : products.data!.items.length === 0 ? (
-                <EmptyRow colSpan={5}>No products yet. Create the first one.</EmptyRow>
+                <EmptyRow colSpan={5}>
+                  {debouncedSearch
+                    ? `No products match "${debouncedSearch}".`
+                    : "No products yet. Create the first one."}
+                </EmptyRow>
               ) : (
                 products.data!.items.map((p) => (
                   <tr key={p.id} className="hover:bg-bg">
