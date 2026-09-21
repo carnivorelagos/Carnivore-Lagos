@@ -39,8 +39,8 @@ export function StoreHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-bg)_82%,transparent)] backdrop-blur-md">
       <div className="shell gutter flex h-14 items-center justify-between gap-4 sm:h-16">
-        <div className="flex items-center gap-8">
-          <Wordmark size="md" />
+        <div className="flex min-w-0 items-center gap-8">
+          <Wordmark size="md" tagline />
           <nav className="hidden items-center gap-7 sm:flex">
             {navLink("/menu", "Menu", true)}
             {navLink("/history", "Orders")}

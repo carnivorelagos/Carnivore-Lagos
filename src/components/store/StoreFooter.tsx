@@ -8,10 +8,7 @@ export function StoreFooter() {
     <footer className="mt-16 border-t border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="shell gutter grid gap-8 py-12 sm:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Wordmark size="md" href={null} />
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--color-muted)]">
-            {BRAND.promise}
-          </p>
+          <Wordmark size="md" href={null} tagline />
           <p className="mt-4 flex max-w-xs items-start gap-1.5 text-[13px] leading-snug text-[var(--color-subtle)]">
             <MapPin className="mt-px size-4 shrink-0" aria-hidden />
             <span>{BRAND.addressLine}</span>

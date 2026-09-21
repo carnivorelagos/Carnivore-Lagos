@@ -12,10 +12,13 @@ export function Wordmark({
   className,
   size = "md",
   href = "/",
+  tagline = false,
 }: {
   className?: string;
   size?: "sm" | "md" | "lg";
   href?: string | null;
+  /** Show the brand phrase ("...from farm to table") beside the logo, in red. */
+  tagline?: boolean;
 }) {
   const sizeClass = {
     sm: "text-[26px]",
@@ -39,10 +42,32 @@ export function Wordmark({
     </span>
   );
 
-  if (!href) return inner;
-  return (
+  const mark = href ? (
     <Link href={href} aria-label={`${BRAND.name} - home`} className="inline-flex items-center">
       {inner}
     </Link>
+  ) : (
+    inner
+  );
+
+  if (!tagline) return mark;
+
+  // Logo, then the phrase on its side. The logo never shrinks; the phrase
+  // takes whatever room is left and wraps to two short lines rather than
+  // crowding the cart icon on a narrow phone, and drops out entirely below
+  // ~340px where there's no honest room for it.
+  return (
+    <span className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+      <span className="shrink-0">{mark}</span>
+      <span
+        // The brand red with a whisper of white (#e83e32): the pure accent
+        // (#e4231d) is only ~4.0-4.3:1 against the near-black ground, a
+        // touch under AA for small text. 7% white gets 4.8:1 on the header
+        // and 4.5:1 on the footer while still reading as the brand red.
+        className="min-w-0 text-[12px] font-semibold leading-[1.15] tracking-[0.01em] text-[color-mix(in_oklab,var(--color-accent)_93%,white)] max-[339px]:hidden sm:text-[13px]"
+      >
+        {BRAND.promise}
+      </span>
+    </span>
   );
 }
