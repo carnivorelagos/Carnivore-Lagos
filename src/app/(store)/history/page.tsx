@@ -4,7 +4,7 @@ import { Suspense, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowClockwise, ClockCounterClockwise, CreditCard } from "@phosphor-icons/react";
-import { getHistory, reorder as reorderApi, secureHistory } from "@/lib/client/endpoints";
+import { getHistory, reorder as reorderApi } from "@/lib/client/endpoints";
 import { useAsyncData } from "@/lib/client/useAsyncData";
 import { errorMessage } from "@/lib/client/errors";
 import { formatDateTime } from "@/lib/client/format";
@@ -12,19 +12,13 @@ import { useCart } from "@/components/providers/CartProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { OrderStatusBadge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Money";
-import { TextField } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/feedback";
 import { HistorySkeleton } from "@/components/store/skeletons";
 import { GoogleButton } from "@/components/store/GoogleButton";
+import { EmailLinkForm } from "@/components/store/EmailLinkForm";
 
 function SecureBanner({ securedEmail, googleEnabled }: { securedEmail: string | null; googleEnabled: boolean }) {
-  const { toast } = useToast();
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
   if (securedEmail) {
     return (
       <p className="text-[13px] text-[var(--color-muted)]">
@@ -34,54 +28,17 @@ function SecureBanner({ securedEmail, googleEnabled }: { securedEmail: string | 
     );
   }
 
-  if (sent) {
-    return (
-      <p className="text-[13px] text-[var(--color-muted)]">
-        Link sent to <span className="text-[var(--color-text)]">{email}</span>. Open it to secure this
-        history.
-      </p>
-    );
-  }
-
   return (
     <>
-    {googleEnabled ? (
-      <div className="mb-4">
-        <GoogleButton next="/history" />
-        <p className="mt-3 text-[12px] uppercase tracking-[0.14em] text-[var(--color-subtle)]">
-          or get an email link
-        </p>
-      </div>
-    ) : null}
-    <form
-      className="flex flex-col gap-2 sm:flex-row"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setBusy(true);
-        setErr(null);
-        secureHistory(email.trim())
-          .then(() => {
-            setSent(true);
-            toast({ tone: "success", title: "Check your email" });
-          })
-          .catch((x) => setErr(errorMessage(x)))
-          .finally(() => setBusy(false));
-      }}
-    >
-      <TextField
-        label="Email"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        containerClassName="flex-1"
-        value={email}
-        error={err}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <Button type="submit" loading={busy} pendingLabel="Sending…" className="sm:mt-[26px]">
-        Secure it
-      </Button>
-    </form>
+      {googleEnabled ? (
+        <div className="mb-4">
+          <GoogleButton next="/history" />
+          <p className="mt-3 text-[12px] uppercase tracking-[0.14em] text-[var(--color-subtle)]">
+            or get an email link
+          </p>
+        </div>
+      ) : null}
+      <EmailLinkForm next="/history" submitLabel="Secure it" />
     </>
   );
 }

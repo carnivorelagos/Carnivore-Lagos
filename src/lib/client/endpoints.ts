@@ -94,8 +94,8 @@ export const reorder = (trackingSlug: string) =>
 
 export const deviceSignOut = () => apiFetch<{ signedOut: boolean }>("/api/auth/device/logout", { body: {} });
 
-export const secureHistory = (email: string) =>
-  apiFetch<{ sent: boolean }>("/api/history/secure", { body: { email } });
+export const secureHistory = (email: string, next?: string) =>
+  apiFetch<{ sent: boolean }>("/api/history/secure", { body: { email, ...(next ? { next } : {}) } });
 
 /* ----------------------------------------------------------------------
    Payments

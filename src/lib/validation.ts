@@ -233,4 +233,8 @@ export const chargeSavedCardSchema = z.object({ trackingSlug: trackingSlugSchema
 
 export const secureHistorySchema = z.object({
   email: z.email().max(200),
+  // Where to land the customer after they open the emailed link. Loosely
+  // checked here; the route re-validates it with safeNextPath before it's
+  // ever used, so this is just shape/length, not a trust boundary.
+  next: z.string().max(500).optional(),
 });

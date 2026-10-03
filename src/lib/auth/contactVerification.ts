@@ -12,7 +12,13 @@ import { logger } from "../logger";
  * src/lib/otp.ts: a read-only DB leak alone can't forge a usable link.
  */
 
-const LINK_TTL_MS = 45 * 60_000; // 45 minutes
+export const LINK_TTL_MS = 45 * 60_000; // 45 minutes
+
+// Where to redirect the customer after they open the link, read back by the
+// confirm route. Path-scoped to this flow's own routes; only ever present
+// on the same device that requested the link (the recovery path - opening
+// on a different device - just has no cookie and lands on /history).
+export const EMAIL_LINK_NEXT_COOKIE = "email_link_next";
 
 function pepper(): Buffer {
   const secret = process.env.AUTH_SECRET;

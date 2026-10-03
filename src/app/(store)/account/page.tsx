@@ -8,29 +8,36 @@ import { deviceSignOut, getHistory } from "@/lib/client/endpoints";
 import { useAsyncData } from "@/lib/client/useAsyncData";
 import { errorMessage } from "@/lib/client/errors";
 import { GoogleButton } from "@/components/store/GoogleButton";
+import { EmailLinkForm } from "@/components/store/EmailLinkForm";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/feedback";
 
 /*
  * Account = "sign in or carry on as a guest". Guest is the default and never
- * blocked: ordering needs no account. Signing in (Google) just proves an
- * email, which links this device to that email's order history + saved card
- * so they follow the customer to any device. The retired phone-OTP account
- * screens (this route's previous contents) are in git history; SMS isn't
- * available yet.
+ * blocked: ordering needs no account. Signing in (Google, or an email link)
+ * just proves an email, which links this device to that email's order
+ * history + saved card so they follow the customer to any device. The
+ * retired phone-OTP account screens (this route's previous contents) are in
+ * git history; SMS isn't available yet.
  */
 
-const NOTICES: Record<string, { tone: "ok" | "bad"; text: string }> = {
+const SIGNIN_NOTICES: Record<string, { tone: "ok" | "bad"; text: string }> = {
   ok: { tone: "ok", text: "You're signed in." },
   cancelled: { tone: "bad", text: "Sign-in was cancelled. You can try again, or just continue as a guest." },
   failed: { tone: "bad", text: "We couldn't sign you in with Google. Please try again, or continue as a guest." },
   unavailable: { tone: "bad", text: "Google sign-in isn't available right now. You can still order as a guest." },
 };
 
+const SECURED_NOTICES: Record<string, { tone: "ok" | "bad"; text: string }> = {
+  "1": { tone: "ok", text: "You're signed in — your email is confirmed." },
+  failed: { tone: "bad", text: "That link was invalid or expired. Enter your email again below." },
+};
+
 function AccountView() {
   const router = useRouter();
   const search = useSearchParams();
-  const notice = NOTICES[search.get("signin") ?? ""];
+  // Google lands back here with ?signin=..., the email link with ?secured=...
+  const notice = SIGNIN_NOTICES[search.get("signin") ?? ""] ?? SECURED_NOTICES[search.get("secured") ?? ""];
   const { data, status, reload } = useAsyncData(() => getHistory(), []);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -100,18 +107,19 @@ function AccountView() {
         <section className="mt-6 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
           <h2 className="font-display text-lg">Sign in or sign up</h2>
           <p className="mt-1 text-[13px] text-[var(--color-muted)]">
-            One tap with Google keeps your order history and saved card on every device. It&apos;s
-            optional - you can always order as a guest.
+            Google, or a one-tap link by email — either keeps your order history and saved card on
+            every device. Both are optional; you can always order as a guest.
           </p>
           <div className="mt-5 flex flex-col gap-3">
             {data.googleEnabled ? (
-              <GoogleButton next="/history" />
-            ) : (
-              <p className="text-[13px] text-[var(--color-subtle)]">
-                Google sign-in isn&apos;t switched on yet. You can still keep your history by email
-                on the Orders page.
-              </p>
-            )}
+              <>
+                <GoogleButton next="/account" />
+                <p className="text-center text-[12px] uppercase tracking-[0.14em] text-[var(--color-subtle)]">
+                  or
+                </p>
+              </>
+            ) : null}
+            <EmailLinkForm next="/account" />
             <Link href="/menu" className={buttonVariants({ variant: "secondary" })}>
               Continue as guest
             </Link>

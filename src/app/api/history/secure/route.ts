@@ -3,7 +3,8 @@ import { ok, withApiHandler } from "@/lib/api-response";
 import { secureHistorySchema } from "@/lib/validation";
 import { assertSameOrigin } from "@/lib/auth/csrf";
 import { getOrCreateDeviceProfile, attachDeviceTokenCookie } from "@/lib/auth/deviceProfile";
-import { createContactMagicLink } from "@/lib/auth/contactVerification";
+import { createContactMagicLink, EMAIL_LINK_NEXT_COOKIE, LINK_TTL_MS } from "@/lib/auth/contactVerification";
+import { safeNextPath } from "@/lib/auth/safeNextPath";
 import { sendHistoryMagicLink } from "@/lib/email";
 import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -19,7 +20,7 @@ import { enforceRateLimit, clientIp } from "@/lib/rateLimit";
  */
 export const POST = withApiHandler(async (req: NextRequest) => {
   assertSameOrigin(req);
-  const { email } = secureHistorySchema.parse(await req.json());
+  const { email, next } = secureHistorySchema.parse(await req.json());
 
   const { profile, newToken } = await getOrCreateDeviceProfile(req);
 
@@ -33,5 +34,12 @@ export const POST = withApiHandler(async (req: NextRequest) => {
 
   const res = ok({ sent: true });
   if (newToken) attachDeviceTokenCookie(res, newToken);
+  res.cookies.set(EMAIL_LINK_NEXT_COOKIE, safeNextPath(next), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/api/history/secure",
+    maxAge: Math.floor(LINK_TTL_MS / 1000),
+  });
   return res;
 });

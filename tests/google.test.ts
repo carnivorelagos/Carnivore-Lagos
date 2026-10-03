@@ -69,12 +69,13 @@ describe("verifyGoogleIdToken", () => {
 });
 
 describe("safeNextPath", () => {
-  it("keeps ordinary same-site paths", () => {
+  it("keeps ordinary same-site paths, including /account (a valid post-signin landing page)", () => {
     expect(safeNextPath("/checkout")).toBe("/checkout");
     expect(safeNextPath("/history?x=1")).toBe("/history?x=1");
+    expect(safeNextPath("/account")).toBe("/account");
   });
-  it("refuses open-redirect shapes and sign-in loops", () => {
-    for (const bad of ["https://evil.com", "//evil.com", "/\\evil.com", "/api/admin", "/account", "/login", "", null, undefined]) {
+  it("refuses open-redirect shapes and the /login sign-in loop", () => {
+    for (const bad of ["https://evil.com", "//evil.com", "/\\evil.com", "/api/admin", "/login", "", null, undefined]) {
       expect(safeNextPath(bad as string | null | undefined)).toBe("/history");
     }
   });

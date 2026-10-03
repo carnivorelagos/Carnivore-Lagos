@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { AppError, ErrorCode } from "../errors";
+import { safeNextPath } from "./safeNextPath";
+
+export { safeNextPath };
 
 /**
  * "Continue with Google" — the OpenID Connect authorization-code flow with
@@ -38,17 +41,6 @@ function credentials(): { clientId: string; clientSecret: string } {
 export function googleRedirectUri(origin: string): string {
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? origin).replace(/\/$/, "");
   return `${base}/api/auth/google/callback`;
-}
-
-/**
- * Only same-site page paths may be used as the post-login destination, so
- * the flow can't be turned into an open redirect. Never back into /account
- * or /login either (they're the sign-in screens themselves).
- */
-export function safeNextPath(raw: string | null | undefined): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return "/history";
-  if (raw.startsWith("/api/") || raw.startsWith("/login") || raw.startsWith("/account")) return "/history";
-  return raw;
 }
 
 export type OAuthState = { state: string; nonce: string; verifier: string; next: string };
