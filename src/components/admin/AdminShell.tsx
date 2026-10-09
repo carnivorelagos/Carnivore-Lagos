@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   GearSix,
   List,
+  Motorcycle,
   Receipt,
   SignOut,
   SquaresFour,
@@ -21,6 +22,7 @@ import { AdminOrderAlerts } from "@/components/admin/AdminOrderAlerts";
 const NAV = [
   { href: "/admin", label: "Overview", icon: SquaresFour, exact: true },
   { href: "/admin/orders", label: "Orders", icon: Receipt },
+  { href: "/admin/riders", label: "Riders", icon: Motorcycle },
   { href: "/admin/payments", label: "Payments", icon: Warning },
   { href: "/admin/products", label: "Products", icon: Tag },
   { href: "/admin/categories", label: "Categories", icon: List },

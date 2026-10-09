@@ -348,6 +348,13 @@ model Order {
   deliveryDistanceKm Decimal? @db.Decimal(6, 2)
   notes              String?
 
+  // The restaurant's own rider delivering this order (not a platform
+  // courier) — set by admin, optional even on a DELIVERY order (a rider
+  // may not be assigned yet). onDelete:SetNull so removing a rider never
+  // touches order history. See Rider below.
+  riderId String?
+  rider   Rider? @relation(fields: [riderId], references: [id], onDelete: SetNull)
+
   subtotalKobo    Int
   deliveryFeeKobo Int @default(0)
   totalKobo       Int
@@ -374,6 +381,7 @@ model Order {
   @@index([customerId])
   @@index([deviceProfileId])
   @@index([deletedAt])
+  @@index([riderId])
 }
 
 model OrderItem {
@@ -391,6 +399,35 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Riders — the restaurant's own delivery staff (not a platform courier).
+// No login: a single unguessable link (`token`, the same capability
+// pattern as Order.trackingSlug) is all onboarding takes. lastLat/lastLng/
+// lastSeenAt hold only the rider's most recent reported position for live
+// tracking — this is not a trip/location history log.
+// ---------------------------------------------------------------------------
+
+model Rider {
+  id       String  @id @default(uuid())
+  name     String
+  phone    String
+  token    String  @unique @default(cuid(2))
+  // No DELETE route — same reasoning as Category: deactivating keeps a
+  // past order's `rider` relation meaningful instead of nulling it out.
+  isActive Boolean @default(true)
+
+  lastLat    Decimal?  @db.Decimal(9, 6)
+  lastLng    Decimal?  @db.Decimal(9, 6)
+  lastSeenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive])
 }
 
 // orderId stays unique — this row is "the current payment attempt for this

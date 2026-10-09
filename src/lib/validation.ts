@@ -231,6 +231,30 @@ export const reorderSchema = z.object({ trackingSlug: trackingSlugSchema });
 
 export const chargeSavedCardSchema = z.object({ trackingSlug: trackingSlugSchema });
 
+// --- Riders (self-onboarded delivery staff, Section: live tracking) -----
+
+/** A rider's tracking-link token (cuid2, same shape as trackingSlug). */
+export const riderTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{16,64}$/, "Invalid rider link.");
+
+export const adminRiderCreateSchema = z.object({
+  name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
+  phone: phoneSchema,
+});
+
+export const adminRiderUpdateSchema = adminRiderCreateSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+// null unassigns.
+export const adminAssignRiderSchema = z.object({
+  riderId: uuidSchema.nullable(),
+});
+
+export const riderLocationUpdateSchema = latLngSchema;
+
 export const secureHistorySchema = z.object({
   email: z.email().max(200),
   // Where to land the customer after they open the emailed link. Loosely

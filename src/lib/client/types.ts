@@ -333,6 +333,47 @@ export type AdminPaymentRow = {
 
 export type AdminOrderDetail = Omit<MyOrderDetail, "payment"> & {
   payment: AdminPaymentRow | null;
+  riderId: string | null;
+  rider: AdminRider | null;
+};
+
+// --- Riders (Section: live tracking) -------------------------------------
+
+export type AdminRider = {
+  id: string;
+  name: string;
+  phone: string;
+  /** The rider's tracking-link token — only ever shown to admin, never to a customer. */
+  token: string;
+  isActive: boolean;
+  lastLat: string | null;
+  lastLng: string | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RiderOrderSummary = {
+  orderNumber: string;
+  status: OrderStatus;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string | null;
+  deliveryLat: string | null;
+  deliveryLng: string | null;
+};
+
+/** A rider's own view of their link (GET /api/rider/[token]). */
+export type RiderSession = {
+  id: string;
+  name: string;
+  orders: RiderOrderSummary[];
+};
+
+/** Live rider position for one order (GET /api/orders/[slug]/rider). */
+export type OrderRiderLocation = {
+  destination: LatLng | null;
+  rider: { name: string; lat: number; lng: number; lastSeenAt: string } | null;
 };
 
 export type PaymentIssueType =

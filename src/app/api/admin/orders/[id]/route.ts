@@ -20,6 +20,7 @@ export const GET = withApiHandler(async (req: NextRequest, ctx) => {
     include: {
       items: { include: { product: { select: { imageUrl: true } } } },
       payment: true,
+      rider: true,
     },
   });
 

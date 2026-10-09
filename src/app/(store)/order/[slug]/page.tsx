@@ -14,6 +14,7 @@ import { formatDateTime, FULFILLMENT_LABEL } from "@/lib/client/format";
 import { TERMINAL_STATUSES } from "@/lib/client/orderFlow";
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
 import { OrderTimeline } from "@/components/store/OrderTimeline";
+import { RiderTracking } from "@/components/store/RiderTracking";
 import { OrderLineItems } from "@/components/store/OrderLineItems";
 import { TextField } from "@/components/ui/form";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -242,6 +243,10 @@ function OrderView() {
           <h2 className="mb-3 font-display text-lg">Progress</h2>
           <OrderTimeline status={order.status} fulfillmentType={order.fulfillmentType} />
         </section>
+
+        {order.fulfillmentType === "DELIVERY" && order.status === "OUT_FOR_DELIVERY" ? (
+          <RiderTracking slug={order.trackingSlug} />
+        ) : null}
 
         <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
           <div className="mb-3 flex items-center gap-2 text-sm text-[var(--color-muted)]">

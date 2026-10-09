@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash } from "@phosphor-icons/react";
-import { adminDeleteOrder, adminGetOrder, adminSetOrderStatus } from "@/lib/client/endpoints";
+import { Motorcycle, Trash } from "@phosphor-icons/react";
+import {
+  adminAssignRider,
+  adminDeleteOrder,
+  adminGetOrder,
+  adminGetRiders,
+  adminSetOrderStatus,
+} from "@/lib/client/endpoints";
 import { errorCode, errorMessage } from "@/lib/client/errors";
 import { isApiError } from "@/lib/client/api";
 import { allowedNextStatuses, TRANSITION_VERB } from "@/lib/client/orderFlow";
@@ -11,8 +17,10 @@ import {
   formatDateTime,
   FULFILLMENT_LABEL,
   ORDER_STATUS_LABEL,
+  relativeTime,
 } from "@/lib/client/format";
 import type { OrderStatus } from "@/lib/client/types";
+import { isRiderLocationFresh } from "@/lib/riders";
 import { useAdminData } from "@/components/admin/useAdminData";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader, Card } from "@/components/admin/primitives";
@@ -21,7 +29,9 @@ import { OrderStatusBadge, PaymentStatusBadge } from "@/components/ui/Badge";
 import { OrderLineItems } from "@/components/store/OrderLineItems";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Overlay";
+import { SelectField } from "@/components/ui/form";
 import { EmptyState, ErrorState } from "@/components/ui/feedback";
+import { LiveTrackingMap } from "@/components/map/LiveTrackingMap";
 import { formatNaira } from "@/lib/client/format";
 
 function DefRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -88,6 +98,44 @@ export default function AdminOrderDetailPage() {
     },
     [id, setData, reload, toast],
   );
+
+  // Riders only matter for delivery orders — fetched regardless (it's a
+  // short list) rather than threading a conditional fetch through the hook.
+  const { data: riders } = useAdminData(() => adminGetRiders(), []);
+  const [selectedRiderId, setSelectedRiderId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
+  const assignRider = useCallback(
+    async (riderId: string | null) => {
+      setAssigning(true);
+      try {
+        const updated = await adminAssignRider(id, riderId);
+        setData(updated);
+        toast({ tone: "success", title: riderId ? "Rider assigned" : "Rider unassigned" });
+        setSelectedRiderId("");
+      } catch (e) {
+        toast({ tone: "danger", title: "Couldn't update rider", description: errorMessage(e) });
+      } finally {
+        setAssigning(false);
+      }
+    },
+    [id, setData, toast],
+  );
+
+  // Re-poll the order while a rider is actively assigned, so their live
+  // position (order.rider.lastLat/lastLng) keeps updating on screen —
+  // same idea as the customer tracking page's poll, just reusing the
+  // existing reload() instead of a second endpoint.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const live = order?.fulfillmentType === "DELIVERY" && !!order?.riderId;
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (!live) return;
+    pollRef.current = setInterval(() => reload(true), 15000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [order?.fulfillmentType, order?.riderId, reload]);
 
   const notFound = isApiError(error) && (error.status === 404 || error.code === "NOT_FOUND");
 
@@ -197,6 +245,92 @@ export default function AdminOrderDetailPage() {
               )}
             </dl>
           </Card>
+
+          {order.fulfillmentType === "DELIVERY" ? (
+            <Card className="p-4">
+              <h2 className="mb-1 flex items-center gap-1.5 text-[13px] font-semibold text-text">
+                <Motorcycle className="size-4" aria-hidden />
+                Rider
+              </h2>
+
+              {order.rider ? (
+                <>
+                  <dl className="divide-y divide-line">
+                    <DefRow label="Name">{order.rider.name}</DefRow>
+                    <DefRow label="Phone">
+                      <span className="tnum font-mono">{order.rider.phone}</span>
+                    </DefRow>
+                  </dl>
+                  {order.rider.lastLat && order.rider.lastLng && order.rider.lastSeenAt ? (
+                    <div className="mt-3 space-y-2">
+                      <LiveTrackingMap
+                        riderPosition={
+                          isRiderLocationFresh(new Date(order.rider.lastSeenAt))
+                            ? { lat: Number(order.rider.lastLat), lng: Number(order.rider.lastLng) }
+                            : null
+                        }
+                        destination={
+                          order.deliveryLat && order.deliveryLng
+                            ? { lat: Number(order.deliveryLat), lng: Number(order.deliveryLng) }
+                            : null
+                        }
+                        className="h-56 w-full overflow-hidden rounded-lg border border-line-strong"
+                      />
+                      <p className="text-[12px] text-subtle">
+                        {isRiderLocationFresh(new Date(order.rider.lastSeenAt))
+                          ? `Live - updated ${relativeTime(order.rider.lastSeenAt)}`
+                          : `Not currently sharing - last seen ${relativeTime(order.rider.lastSeenAt)}`}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-[13px] text-muted">
+                      Hasn&apos;t opened their tracking link yet.
+                    </p>
+                  )}
+                  <Button
+                    className="mt-3"
+                    size="sm"
+                    variant="secondary"
+                    loading={assigning}
+                    onClick={() => void assignRider(null)}
+                  >
+                    Unassign
+                  </Button>
+                </>
+              ) : (
+                <div className="mt-2 flex items-end gap-2">
+                  <SelectField
+                    label="Assign a rider"
+                    containerClassName="flex-1"
+                    value={selectedRiderId}
+                    onChange={(e) => setSelectedRiderId(e.target.value)}
+                  >
+                    <option value="">Choose a rider…</option>
+                    {(riders ?? [])
+                      .filter((r) => r.isActive)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </SelectField>
+                  <Button
+                    size="sm"
+                    disabled={!selectedRiderId}
+                    loading={assigning}
+                    onClick={() => void assignRider(selectedRiderId)}
+                  >
+                    Assign
+                  </Button>
+                </div>
+              )}
+              {(riders ?? []).length === 0 ? (
+                <p className="mt-2 text-[12px] text-subtle">
+                  No riders yet — add one under Riders in the sidebar.
+                </p>
+              ) : null}
+            </Card>
+          ) : null}
 
           <Card className="p-4">
             <h2 className="mb-1 text-[13px] font-semibold text-text">Payment</h2>

@@ -8,6 +8,7 @@ import type {
   AdminPaymentIssue,
   AdminPaymentIssueList,
   AdminProduct,
+  AdminRider,
   AdminSettings,
   AssistResult,
   BulkDeleteResult,
@@ -24,6 +25,7 @@ import type {
   MyOrderDetail,
   MyOrderListItem,
   OrderStatus,
+  OrderRiderLocation,
   OtpVerifyResult,
   Paginated,
   PaymentInit,
@@ -33,6 +35,7 @@ import type {
   PublicOrder,
   PublicSettings,
   ReorderResult,
+  RiderSession,
 } from "./types";
 
 /* ----------------------------------------------------------------------
@@ -82,6 +85,21 @@ export const createOrder = (body: CreateOrderBody) =>
 /** Public order tracking by unguessable slug (no second factor). */
 export const getOrderBySlug = (slug: string) =>
   apiRead<PublicOrder>(`/api/orders/${encodeURIComponent(slug)}`);
+
+/** Polled by the order page while a delivery is out — see RiderTracking. */
+export const getOrderRiderLocation = (slug: string) =>
+  apiRead<OrderRiderLocation>(`/api/orders/${encodeURIComponent(slug)}/rider`);
+
+/* ----------------------------------------------------------------------
+   Rider's own tracking link (/rider/[token]) - no cookie, no admin
+   session; the token in the path is the entire capability.
+---------------------------------------------------------------------- */
+
+export const getRiderSession = (token: string) =>
+  apiRead<RiderSession>(`/api/rider/${encodeURIComponent(token)}`);
+
+export const postRiderLocation = (token: string, lat: number, lng: number) =>
+  apiFetch<{ ok: boolean }>(`/api/rider/${encodeURIComponent(token)}/location`, { body: { lat, lng } });
 
 /* ----------------------------------------------------------------------
    Device history / no-login (amendments 2-4)
@@ -282,6 +300,24 @@ export const adminCreateCategory = (body: AdminCategoryInput) =>
 
 export const adminUpdateCategory = (id: string, body: Partial<AdminCategoryInput>) =>
   apiFetch<AdminCategory>(`/api/admin/categories/${id}`, { method: "PATCH", body });
+
+export const adminGetRiders = () => apiRead<AdminRider[]>("/api/admin/riders");
+
+export type AdminRiderInput = { name: string; phone: string };
+
+export const adminCreateRider = (body: AdminRiderInput) =>
+  apiFetch<AdminRider>("/api/admin/riders", { body });
+
+export const adminUpdateRider = (id: string, body: Partial<AdminRiderInput> & { isActive?: boolean }) =>
+  apiFetch<AdminRider>(`/api/admin/riders/${id}`, { method: "PATCH", body });
+
+/** Deactivates (there's no hard delete — see the route). */
+export const adminDeactivateRider = (id: string) =>
+  apiFetch<AdminRider>(`/api/admin/riders/${id}`, { method: "DELETE" });
+
+/** Assign a rider to a delivery order, or pass `null` to unassign. */
+export const adminAssignRider = (orderId: string, riderId: string | null) =>
+  apiFetch<AdminOrderDetail>(`/api/admin/orders/${orderId}/rider`, { method: "PATCH", body: { riderId } });
 
 export const adminGetSettings = () => apiRead<AdminSettings>("/api/admin/settings");
 
