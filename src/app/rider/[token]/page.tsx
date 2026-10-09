@@ -183,17 +183,20 @@ function RiderView({ token }: { token: string }) {
           size="lg"
           variant={sharing ? "danger" : "primary"}
           icon={<Power className="size-5" aria-hidden />}
+          disabled={!sharing && session.orders.length === 0}
           onClick={() => (sharing ? stop() : start(token))}
         >
-          {sharing ? "Stop sharing location" : "Start sharing location"}
+          {sharing ? "End trip" : "Start trip"}
         </Button>
-        <p className="mt-3 text-center text-[12.5px] text-[var(--color-muted)]">
-          {sharing
-            ? lastSentAt
-              ? `Sharing - last sent ${relativeTime(lastSentAt)}`
-              : "Sharing - waiting for your first position…"
-            : "Not sharing right now"}
-        </p>
+        {sharing ? (
+          <p className="mt-3 text-center text-[12.5px] text-[var(--color-muted)]">
+            {lastSentAt ? `Trip started - last sent ${relativeTime(lastSentAt)}` : "Trip started - waiting for your first position…"}
+          </p>
+        ) : session.orders.length === 0 ? (
+          <p className="mt-3 text-center text-[12.5px] text-[var(--color-muted)]">
+            You&apos;ll be able to start once the restaurant assigns you a delivery.
+          </p>
+        ) : null}
         {error ? <p className="mt-2 text-center text-[12.5px] text-[var(--color-danger)]">{error}</p> : null}
       </div>
 
