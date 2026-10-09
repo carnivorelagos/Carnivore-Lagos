@@ -45,22 +45,35 @@ function RiderRow({ rider, onSaved }: { rider: AdminRider; onSaved: (r: AdminRid
   const { toast } = useToast();
   const [name, setName] = useState(rider.name);
   const [phone, setPhone] = useState(rider.phone);
+  const [email, setEmail] = useState(rider.email ?? "");
   const [isActive, setIsActive] = useState(rider.isActive);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [emailErr, setEmailErr] = useState<string | null>(null);
 
-  const dirty = name.trim() !== rider.name || phone.trim() !== rider.phone || isActive !== rider.isActive;
+  const dirty =
+    name.trim() !== rider.name ||
+    phone.trim() !== rider.phone ||
+    email.trim() !== (rider.email ?? "") ||
+    isActive !== rider.isActive;
 
   const save = async () => {
     setBusy(true);
     setErr(null);
+    setEmailErr(null);
     try {
-      const saved = await adminUpdateRider(rider.id, { name: name.trim(), phone: phone.trim(), isActive });
+      const saved = await adminUpdateRider(rider.id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim() === "" ? null : email.trim(),
+        isActive,
+      });
       onSaved(saved);
       toast({ tone: "success", title: "Rider saved" });
     } catch (e) {
       const fe = fieldErrors(e);
-      setErr(fe.name ?? fe.phone ?? errorMessage(e));
+      setEmailErr(fe.email ?? null);
+      setErr(fe.name ?? fe.phone ?? (fe.email ? null : errorMessage(e)));
     } finally {
       setBusy(false);
     }
@@ -75,9 +88,18 @@ function RiderRow({ rider, onSaved }: { rider: AdminRider; onSaved: (r: AdminRid
 
   return (
     <Card className="p-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
         <TextField label="Name" value={name} error={err} onChange={(e) => setName(e.target.value)} />
         <TextField label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <TextField
+          label="Email"
+          type="email"
+          optionalHint
+          hint="New deliveries are emailed here, with their link."
+          value={email}
+          error={emailErr}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <Button size="sm" disabled={!dirty || busy} loading={busy} onClick={() => void save()}>
           Save
         </Button>
@@ -104,22 +126,28 @@ function AddRider({ onCreated }: { onCreated: (r: AdminRider) => void }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [errs, setErrs] = useState<{ name?: string; phone?: string }>({});
+  const [errs, setErrs] = useState<{ name?: string; phone?: string; email?: string }>({});
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setErrs({});
     try {
-      const created = await adminCreateRider({ name: name.trim(), phone: phone.trim() });
+      const created = await adminCreateRider({
+        name: name.trim(),
+        phone: phone.trim(),
+        ...(email.trim() ? { email: email.trim() } : {}),
+      });
       onCreated(created);
       setName("");
       setPhone("");
+      setEmail("");
       toast({ tone: "success", title: "Rider added" });
     } catch (e2) {
       const fe = fieldErrors(e2);
-      if (fe.name || fe.phone) setErrs(fe);
+      if (fe.name || fe.phone || fe.email) setErrs(fe);
       else toast({ tone: "danger", title: "Couldn't add rider", description: errorMessage(e2) });
     } finally {
       setBusy(false);
@@ -128,7 +156,7 @@ function AddRider({ onCreated }: { onCreated: (r: AdminRider) => void }) {
 
   return (
     <form onSubmit={submit} className="rounded-lg border border-line bg-surface p-4 shadow-[var(--shadow-raise)]">
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
         <TextField label="Name" value={name} error={errs.name} onChange={(e) => setName(e.target.value)} />
         <TextField
           label="Phone"
@@ -136,6 +164,14 @@ function AddRider({ onCreated }: { onCreated: (r: AdminRider) => void }) {
           value={phone}
           error={errs.phone}
           onChange={(e) => setPhone(e.target.value)}
+        />
+        <TextField
+          label="Email"
+          type="email"
+          optionalHint
+          value={email}
+          error={errs.email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <Button type="submit" size="sm" loading={busy}>
           Add rider

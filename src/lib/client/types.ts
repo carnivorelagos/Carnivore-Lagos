@@ -343,6 +343,7 @@ export type AdminRider = {
   id: string;
   name: string;
   phone: string;
+  email: string | null;
   /** The rider's tracking-link token — only ever shown to admin, never to a customer. */
   token: string;
   isActive: boolean;

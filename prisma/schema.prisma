@@ -413,6 +413,10 @@ model Rider {
   id       String  @id @default(uuid())
   name     String
   phone    String
+  // Optional — collected so a new assignment can be emailed to the rider
+  // (with their tracking link) in addition to, or in place of, web push.
+  // Existing riders simply have none until an admin adds it.
+  email    String?
   token    String  @unique @default(cuid(2))
   // No DELETE route — same reasoning as Category: deactivating keeps a
   // past order's `rider` relation meaningful instead of nulling it out.
@@ -425,9 +429,28 @@ model Rider {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders Order[]
+  orders            Order[]
+  pushSubscriptions RiderPushSubscription[]
 
   @@index([isActive])
+}
+
+// One Web Push subscription per browser a rider has opted in on, from
+// their own tracking link (no login) — mirrors PushSubscription /
+// AdminPushSubscription. Used to alert a rider the instant they're
+// assigned a new order, same trigger as the assignment email.
+model RiderPushSubscription {
+  id         String   @id @default(uuid())
+  riderId    String
+  rider      Rider    @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([riderId])
 }
 
 // orderId stays unique — this row is "the current payment attempt for this

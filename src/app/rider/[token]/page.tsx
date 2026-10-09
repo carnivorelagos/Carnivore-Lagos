@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { MapPinLine, NavigationArrow, Phone, Power } from "@phosphor-icons/react";
-import { getRiderSession, postRiderLocation } from "@/lib/client/endpoints";
+import { BellRinging, BellSlash, MapPinLine, NavigationArrow, Phone, Power } from "@phosphor-icons/react";
+import {
+  deleteRiderPushSubscription,
+  getRiderSession,
+  postRiderLocation,
+  saveRiderPushSubscription,
+} from "@/lib/client/endpoints";
 import { errorMessage } from "@/lib/client/errors";
 import { isApiError } from "@/lib/client/api";
 import { relativeTime } from "@/lib/client/format";
+import { disablePush, enablePush, isPushSubscribed, pushPermission, pushSupported } from "@/lib/client/push";
 import type { RiderSession } from "@/lib/client/types";
 import { Wordmark } from "@/components/store/Wordmark";
 import { Button } from "@/components/ui/Button";
@@ -79,6 +85,77 @@ function useShareLocation() {
   useEffect(() => () => stop(), [stop]);
 
   return { sharing, lastSentAt, error, start, stop };
+}
+
+/**
+ * Opt in to a phone notification the instant a new delivery is assigned —
+ * separate permission/concern from location sharing, so it's its own
+ * toggle rather than bundled into Start trip. Same pattern as the
+ * customer-facing PushToggle, with save/remove functions bound to this
+ * rider's token instead of a customer session.
+ */
+function RiderPushToggle({ token }: { token: string }) {
+  const [supported, setSupported] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pushSupported()) return;
+    setSupported(true);
+    void isPushSubscribed().then(setSubscribed);
+  }, []);
+
+  if (!supported) return null;
+
+  const denied = pushPermission() === "denied";
+
+  const toggle = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      if (subscribed) {
+        await disablePush((endpoint) => deleteRiderPushSubscription(token, endpoint));
+        setSubscribed(false);
+      } else {
+        const ok = await enablePush((sub) => saveRiderPushSubscription(token, sub));
+        setSubscribed(ok);
+        if (!ok) setErr("Notification permission was not granted.");
+      }
+    } catch {
+      setErr("Couldn't update notifications. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="flex items-center gap-2 text-[13px] font-medium text-[var(--color-text)]">
+            {subscribed ? (
+              <BellRinging className="size-4 text-[var(--color-accent)]" weight="fill" aria-hidden />
+            ) : (
+              <BellSlash className="size-4 text-[var(--color-subtle)]" aria-hidden />
+            )}
+            New-delivery alerts
+          </p>
+          <p className="mt-1 text-[12.5px] text-[var(--color-muted)]">
+            {denied
+              ? "Blocked in your browser settings — allow notifications for this site to enable."
+              : subscribed
+                ? "On for this phone. You'll get a notification the moment you're assigned a delivery."
+                : "Get notified on this phone the moment the restaurant assigns you a delivery."}
+          </p>
+          {err ? <p className="mt-1 text-[12px] text-[var(--color-danger)]">{err}</p> : null}
+        </div>
+        <Button size="sm" variant={subscribed ? "secondary" : "primary"} loading={busy} disabled={denied} onClick={() => void toggle()}>
+          {subscribed ? "Turn off" : "Turn on"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function OrderCard({ order }: { order: RiderSession["orders"][number] }) {
@@ -199,6 +276,8 @@ function RiderView({ token }: { token: string }) {
         ) : null}
         {error ? <p className="mt-2 text-center text-[12.5px] text-[var(--color-danger)]">{error}</p> : null}
       </div>
+
+      <RiderPushToggle token={token} />
 
       <h2 className="mt-8 font-display text-lg text-[var(--color-text)]">
         Your deliveries {session.orders.length > 0 ? `(${session.orders.length})` : ""}

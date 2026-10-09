@@ -242,10 +242,17 @@ export const riderTokenSchema = z
 export const adminRiderCreateSchema = z.object({
   name: z.string().trim().min(1).max(MAX_NAME_LENGTH),
   phone: phoneSchema,
+  // Optional — lets a new assignment be emailed to the rider (with their
+  // tracking link) alongside web push. Riders added before this existed
+  // simply have none until an admin fills it in.
+  email: z.email().max(200).optional(),
 });
 
 export const adminRiderUpdateSchema = adminRiderCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
+  // Overrides the `.partial()` version above: nullable so admin can
+  // explicitly clear an email (omit = leave unchanged, null = clear).
+  email: z.email().max(200).nullable().optional(),
 });
 
 // null unassigns.

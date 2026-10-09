@@ -271,6 +271,40 @@ export async function sendOrderStatusEmail(
   });
 }
 
+/**
+ * Fired when admin assigns a rider to a delivery order (never on
+ * unassign). Carries the rider's own tracking link every time, by design
+ * — a rider never has to hang on to the link themselves; it's resent with
+ * every delivery, so losing it is a non-event.
+ */
+export async function sendRiderAssignmentEmail(
+  to: string,
+  params: {
+    riderName: string;
+    orderNumber: string;
+    customerName: string;
+    deliveryAddress: string | null;
+    link: string;
+  },
+): Promise<void> {
+  const address = params.deliveryAddress
+    ? `<p>Deliver to: <strong>${escapeHtml(params.deliveryAddress)}</strong></p>`
+    : "";
+  await getEmailProvider().send({
+    to,
+    subject: `New delivery: ${params.orderNumber}`,
+    text:
+      `Hi ${params.riderName}, you've been assigned order ${params.orderNumber} for ${params.customerName}.\n` +
+      (params.deliveryAddress ? `Deliver to: ${params.deliveryAddress}\n` : "") +
+      `\nOpen your tracking link to see the full details and start the trip: ${params.link}`,
+    html: `<p>Hi ${escapeHtml(params.riderName)}, you&apos;ve been assigned a new delivery.</p>
+<p>Order <strong>${escapeHtml(params.orderNumber)}</strong> for ${escapeHtml(params.customerName)}</p>
+${address}
+<p><a href="${escapeHtml(params.link)}" style="display:inline-block;padding:12px 20px;background:#e4231d;color:#fff;text-decoration:none;font-weight:600">Open my tracking link</a></p>
+<p style="color:#666;font-size:13px">This is your permanent link — bookmark it or keep this email. It'll be re-sent every time you get a new delivery.</p>`,
+  });
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }

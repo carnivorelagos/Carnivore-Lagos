@@ -101,6 +101,17 @@ export const getRiderSession = (token: string) =>
 export const postRiderLocation = (token: string, lat: number, lng: number) =>
   apiFetch<{ ok: boolean }>(`/api/rider/${encodeURIComponent(token)}/location`, { body: { lat, lng } });
 
+export const saveRiderPushSubscription = (token: string, sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+  apiFetch<{ saved: boolean }>(`/api/rider/${encodeURIComponent(token)}/push/subscribe`, {
+    body: { subscription: sub },
+  });
+
+export const deleteRiderPushSubscription = (token: string, endpoint: string) =>
+  apiFetch<{ removed: boolean }>(`/api/rider/${encodeURIComponent(token)}/push/subscribe`, {
+    method: "DELETE",
+    body: { endpoint },
+  });
+
 /* ----------------------------------------------------------------------
    Device history / no-login (amendments 2-4)
 ---------------------------------------------------------------------- */
@@ -303,13 +314,15 @@ export const adminUpdateCategory = (id: string, body: Partial<AdminCategoryInput
 
 export const adminGetRiders = () => apiRead<AdminRider[]>("/api/admin/riders");
 
-export type AdminRiderInput = { name: string; phone: string };
+export type AdminRiderInput = { name: string; phone: string; email?: string };
 
 export const adminCreateRider = (body: AdminRiderInput) =>
   apiFetch<AdminRider>("/api/admin/riders", { body });
 
-export const adminUpdateRider = (id: string, body: Partial<AdminRiderInput> & { isActive?: boolean }) =>
-  apiFetch<AdminRider>(`/api/admin/riders/${id}`, { method: "PATCH", body });
+export const adminUpdateRider = (
+  id: string,
+  body: Partial<Omit<AdminRiderInput, "email">> & { isActive?: boolean; email?: string | null },
+) => apiFetch<AdminRider>(`/api/admin/riders/${id}`, { method: "PATCH", body });
 
 /** Deactivates (there's no hard delete — see the route). */
 export const adminDeactivateRider = (id: string) =>
